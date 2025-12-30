@@ -1,1 +1,241 @@
-test aaa
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>追星收藏冊互動系統</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700&family=Nunito:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="top-bar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <h1>追星收藏冊互動系統</h1>
+    </div>
+    <nav class="tabs">
+      <button class="tab-button active" data-target="album-view">收藏冊</button>
+      <button class="tab-button" data-target="list-view">收藏清單</button>
+      <button class="tab-button" data-target="stats-view">統計 & 成就</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 收藏冊視圖 -->
+    <section id="album-view" class="view active">
+      <div class="section-header">
+        <h2>我的收藏冊</h2>
+        <p class="section-sub">以「卡冊翻頁」方式瀏覽已收藏的小卡 / 專輯 / 周邊</p>
+      </div>
+
+      <div class="album-wrapper">
+        <div class="album-header">
+          <button id="prev-page" class="ghost-btn">&lt; 上一頁</button>
+            <div class="album-page-info">
+            第 <span id="current-page">1</span> 頁
+            
+            </div>
+          <button id="next-page" class="ghost-btn">下一頁 &gt;</button>
+        </div>
+
+        <div class="album">
+          <div class="album-center-line"></div>
+          <!-- ✅ 翻頁用的疊層（右頁/左頁紙張） -->
+          <div class="page-flip-layer" id="pageFlipLayer" data-html2canvas-ignore="true" aria-hidden="true">
+            <div class="page-flip-shadow" id="pageFlipShadow"></div>
+            <div class="page-flip-paper" id="pageFlipPaper"></div>
+          </div>
+          <div id="album-grid" class="album-grid">
+            <!-- JS 產生 12 個格子 -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 收藏清單視圖 -->
+    <section id="list-view" class="view">
+      <div class="section-header">
+        <h2>收藏清單</h2>
+        <p class="section-sub">用清單方式檢視、搜尋與篩選所有收藏項目</p>
+      </div>
+
+      <div class="filter-bar">
+        <input type="text" id="search-input" placeholder="搜尋名稱 / 團體 / 成員…" />
+        <select id="category-filter">
+          <option value="">全部類別</option>
+          <option value="小卡">小卡</option>
+          <option value="專輯">專輯</option>
+          <option value="周邊">周邊</option>
+          <option value="徽章">徽章</option>
+        </select>
+        <select id="favorite-filter">
+          <option value="">全部收藏</option>
+          <option value="favorite">只看本命卡</option>
+        </select>
+      </div>
+
+      <div id="list-grid" class="card-grid">
+        <!-- JS 產生卡片 -->
+      </div>
+    </section>
+
+    <!-- 統計視圖 -->
+    <section id="stats-view" class="view">
+      <div class="section-header">
+        <h2>統計 & 成就儀表板</h2>
+        <p class="section-sub">看看你目前的追星收藏狀態與解鎖的成就</p>
+      </div>
+
+      <div class="stats-layout">
+        <div class="stats-panel">
+          <h3>收藏概況</h3>
+          <div id="stats-summary" class="stats-summary"></div>
+        </div>
+
+        <div class="stats-panel">
+          <h3>依團體統計</h3>
+          <div id="stats-by-group" class="stats-bars"></div>
+        </div>
+
+        <div class="stats-panel">
+          <h3>依類別統計</h3>
+          <div id="stats-by-category" class="stats-bars"></div>
+        </div>
+
+        <div class="stats-panel">
+          <h3>成就徽章（示意）</h3>
+          <div id="achievement-list" class="achievement-list"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+    <!-- 卡片詳情 Modal：類似範例的 Detail 版型 -->
+    <div id="card-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content detail-modal">
+        <button class="modal-close" data-close-modal>&times;</button>
+
+        <div class="detail-layout">
+        <!-- 左側：大卡片預覽 -->
+        <div class="detail-image-card">
+            <div id="detail-image" class="detail-image-placeholder"></div>
+            <div id="detail-group-tag" class="detail-image-top-tag">GROUP</div>
+
+            <div class="detail-image-bottom">
+            <span id="detail-category-pill" class="detail-pill">小卡</span>
+            <span id="detail-fav-pill" class="detail-pill fav-pill is-hidden">
+                本命卡
+            </span>
+            </div>
+        </div>
+
+        <!-- 右側：文字資訊 -->
+        <div class="detail-info">
+            <div class="detail-title-block">
+            <div id="detail-rare-tag" class="detail-rare-tag">
+                COLLECTION CARD
+            </div>
+            <h3 id="detail-name">卡片名稱</h3>
+            <div id="detail-subname" class="detail-subname">GROUP · MEMBER</div>
+            </div>
+
+            <p id="detail-note" class="detail-note">
+            這張收藏目前還沒有備註，可以之後再補上～
+            </p>
+
+            <dl class="detail-meta-list">
+            <div>
+                <dt>系列 / 版本</dt>
+                <dd id="detail-series">—</dd>
+            </div>
+            <div>
+                <dt>獲得日期</dt>
+                <dd id="detail-date">—</dd>
+            </div>
+            </dl>
+
+            <div class="detail-stats-row">
+            <div class="detail-stat">
+                <span class="detail-stat-label">頁面</span>
+                <span id="detail-page" class="detail-stat-value">第 1 頁</span>
+            </div>
+            <div class="detail-stat">
+                <span class="detail-stat-label">位置</span>
+                <span id="detail-slot" class="detail-stat-value">第 1 格</span>
+            </div>
+            <div class="detail-stat">
+                <span class="detail-stat-label">狀態</span>
+                <span id="detail-status" class="detail-stat-value">一般收藏</span>
+            </div>
+            </div>
+
+            <div class="modal-actions">
+            <button id="toggle-favorite-btn" class="primary-btn">
+                設為本命卡 💖
+            </button>
+            <button id="delete-card-btn" class="danger-btn">刪除</button>
+            </div>
+        </div>
+        </div>
+    </div>
+    </div>
+
+  <!-- 新增卡片 Modal -->
+  <div id="add-modal" class="modal hidden">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-content">
+      <button class="modal-close" data-close-modal>&times;</button>
+      <h3>新增收藏</h3>
+      <form id="add-card-form" class="form-grid">
+        <label>
+          名稱
+          <input type="text" id="add-name" required />
+        </label>
+        <label>
+          團體
+          <input type="text" id="add-group" />
+        </label>
+        <label>
+          成員
+          <input type="text" id="add-member" />
+        </label>
+        <label>
+          類別
+          <select id="add-category">
+            <option value="小卡">小卡</option>
+            <option value="專輯">專輯</option>
+            <option value="周邊">周邊</option>
+            <option value="徽章">徽章</option>
+          </select>
+        </label>
+        <label>
+          圖片網址
+          <input type="text" id="add-image" placeholder="先貼圖片連結，也能留白" />
+        </label>
+        <label>
+          獲得日期
+          <input type="date" id="add-date" />
+        </label>
+        <label>
+          系列 / 版本
+          <input type="text" id="add-series" />
+        </label>
+        <label class="full-row">
+          備註
+          <textarea id="add-note" rows="3"></textarea>
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="primary-btn">新增</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
