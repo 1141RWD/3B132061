@@ -2,6 +2,44 @@
 
 let currentPageIndex = 0;
 
+// ===== 封面畫面控制 =====
+const coverScreen = document.getElementById("cover-screen");
+const coverCard = document.getElementById("cover-card");
+const enterAlbumBtn = document.getElementById("enter-album-btn");
+
+function enterAlbum() {
+  if (!coverScreen) return;
+  coverScreen.classList.add("hidden");  // 利用 CSS .hidden 把封面關掉
+
+  // 確保「收藏冊」這個分頁是打開的
+  const albumTabBtn = document.querySelector('[data-target="album-view"]');
+  if (albumTabBtn) {
+    albumTabBtn.click();
+  }
+}
+
+// 點整個封面區域（空白處也算）
+if (coverScreen) {
+  coverScreen.addEventListener("click", enterAlbum);
+}
+
+// 點封面卡片本身
+if (coverCard) {
+  coverCard.addEventListener("click", function (e) {
+    e.stopPropagation(); // 避免事件冒泡兩次
+    enterAlbum();
+  });
+}
+
+// 點「進入收藏冊」按鈕
+if (enterAlbumBtn) {
+  enterAlbumBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    enterAlbum();
+  });
+}
+// ===== 封面結束 =====
+
 // Tabs 切換
 const tabButtons = document.querySelectorAll(".tab-button");
 const views = document.querySelectorAll(".view");
