@@ -9,6 +9,9 @@ function enterAlbum() {
   if (!coverScreen) return;
   coverScreen.classList.add("hidden"); // 隱藏封面
 
+  // 🔥 進入內容頁時新增一筆歷史紀錄
+  history.pushState({ page: "album" }, "", "#album");
+
   // 確保進來時在「收藏冊」分頁
   const albumTabBtn = document.querySelector('[data-target="album-view"]');
   if (albumTabBtn) {
@@ -37,6 +40,14 @@ if (enterAlbumBtn) {
   });
 }
 // ===== 封面畫面控制結束 =====
+function showCover() {
+  coverScreen.classList.remove("hidden");
+
+  // 同時確保頁面回到最上面（避免卡在中間）
+  window.scrollTo({ top: 0, behavior: "instant" });
+
+  // 導航切回「封面頁」視覺，但你不需要切 tab（封面本身已經蓋住全部）
+}
 
 let currentPageIndex = 0;
 
@@ -346,3 +357,11 @@ loadCards();
 renderAlbum(currentPageIndex);
 applyListFilter();
 renderStats();
+
+// ===== 監聽瀏覽器的上一頁 / 下一頁 =====
+window.addEventListener("popstate", (event) => {
+  // 如果沒有 state ▼ 代表回到封面頁
+  if (!event.state || event.state.page !== "album") {
+    showCover();
+  }
+});
