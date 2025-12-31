@@ -15,7 +15,7 @@ const defaultCards = [
     series: "Fancy You",
     gotDate: "2024-05-01",
     note: "測試圖片",
-    imageUrl: "mina.jpg", // 如果你有移到 img 資料夾就改成 "img/mina.jpg"
+    imageUrl: "img/mina.jpg", // 如果你有移到 img 資料夾就改成 "img/mina.jpg"
     isFavorite: true,
     pageIndex: 0,
     slotIndex: 0
@@ -29,7 +29,7 @@ const defaultCards = [
     series: "Fancy You",
     gotDate: "2024-06-10",
     note: "測試圖片",
-    imageUrl: "momo.jpg",
+    imageUrl: "img/momo.jpg",
     isFavorite: false,
     pageIndex: 0,
     slotIndex: 1
@@ -43,7 +43,7 @@ const defaultCards = [
     series: "Feel Special",
     gotDate: "2024-03-20",
     note: "測試圖片",
-    imageUrl: "nayeon.jpg",
+    imageUrl: "img/nayeon.jpg",
     isFavorite: false,
     pageIndex: 0,
     slotIndex: 2
@@ -57,7 +57,7 @@ const defaultCards = [
     series: "Fancy You",
     gotDate: "2024-04-15",
     note: "測試圖片",
-    imageUrl: "sana.jpg",
+    imageUrl: "img/sana.jpg",
     isFavorite: false,
     pageIndex: 0,
     slotIndex: 3
