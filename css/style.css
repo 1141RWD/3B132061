@@ -1275,26 +1275,27 @@ h1, h2, h3, .section-header h2, .brand h1 {
 }
 
 .cover-card {
-  background: #ffffff;
+  max-width: 420px;
+  margin: 0 auto 20px;
+  padding: 40px 32px;
   border-radius: 32px;
-  padding: 36px 48px;
-  box-shadow: 0 26px 60px rgba(244, 114, 182, 0.55);
-  text-align: center;
-  max-width: 520px;
-  width: 90%;
+  background: #ffffffdd;
+  box-shadow: 0 22px 60px rgba(244, 114, 182, 0.55);
+  border: 1px solid rgba(251, 113, 133, 0.35);
   cursor: pointer;
 }
 
-.cover-title {
-  font-size: 30px;
+.cover-card-title {
+  font-size: 26px;
+  letter-spacing: 0.12em;
   font-weight: 700;
-  margin-bottom: 8px;
+  color: #1f2933;
+  margin-bottom: 10px;
 }
 
-.cover-subtitle {
+.cover-card-subtitle {
   font-size: 14px;
-  color: #9ca3af;
-  margin-bottom: 24px;
+  color: #6b7280;
 }
 
 .cover-btn {
@@ -1303,10 +1304,11 @@ h1, h2, h3, .section-header h2, .brand h1 {
 }
 
 .cover-hint {
-  margin-top: 12px;
+  margin-top: 8px;
   font-size: 12px;
-  color: #6b7280;
+  color: rgba(148, 163, 184, 0.9);
 }
+
 /* 🔥 這個才是關鍵：加上 hidden 時讓封面整層消失 */
 .cover-screen.hidden {
   opacity: 0;
@@ -1314,4 +1316,4 @@ h1, h2, h3, .section-header h2, .brand h1 {
   visibility: hidden;
   transition: opacity 0.25s ease-out;
 }
-
+/* 你原本就有 .hidden { display:none; }，封面會用它來消失 */
