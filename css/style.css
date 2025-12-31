@@ -1286,10 +1286,11 @@ h1, h2, h3, .section-header h2, .brand h1 {
 }
 
 .cover-card-title {
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  margin-bottom: 8px;
+  font-size: 26px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: #1f2933;
+  margin-bottom: 10px;
 }
 
 .cover-card-subtitle {
