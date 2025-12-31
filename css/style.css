@@ -1307,5 +1307,11 @@ h1, h2, h3, .section-header h2, .brand h1 {
   font-size: 12px;
   color: rgba(148, 163, 184, 0.9);
 }
-
+/* 🔥 這個才是關鍵：加上 hidden 時讓封面整層消失 */
+.cover-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.25s ease-out;
+}
 /* 你原本就有 .hidden { display:none; }，封面會用它來消失 */
