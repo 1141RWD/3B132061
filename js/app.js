@@ -1,7 +1,5 @@
 // js/app.js
 
-let currentPageIndex = 0;
-
 // ===== 封面畫面控制 =====
 const coverScreen = document.getElementById("cover-screen");
 const coverCard = document.getElementById("cover-card");
@@ -39,6 +37,9 @@ if (enterAlbumBtn) {
   });
 }
 // ===== 封面畫面控制結束 =====
+
+let currentPageIndex = 0;
+
 
 // Tabs 切換
 const tabButtons = document.querySelectorAll(".tab-button");
