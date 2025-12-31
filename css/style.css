@@ -1261,12 +1261,11 @@ h1, h2, h3, .section-header h2, .brand h1 {
 .cover-screen {
   position: fixed;
   inset: 0;
-  z-index: 999;
+  background: radial-gradient(circle at top, #fee2f2, #fce7f3, #f9a8d4);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at center, #ffe4f5 0%, #f9a8d4 40%, #f472b6 80%);
-  /* 讓淡粉背景鋪滿整個畫面 */
+  z-index: 999;
 }
 
 .cover-inner {
@@ -1309,11 +1308,4 @@ h1, h2, h3, .section-header h2, .brand h1 {
   color: rgba(148, 163, 184, 0.9);
 }
 
-/* 🔥 這個才是關鍵：加上 hidden 時讓封面整層消失 */
-.cover-screen.hidden {
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
-  transition: opacity 0.25s ease-out;
-}
 /* 你原本就有 .hidden { display:none; }，封面會用它來消失 */
