@@ -1,56 +1,69 @@
 // js/app.js
 
-// ===== 封面畫面控制 =====
+// ===== 首頁封面 + 瀏覽器上一頁控制 =====
 const coverScreen = document.getElementById("cover-screen");
 const coverCard = document.getElementById("cover-card");
 const enterAlbumBtn = document.getElementById("enter-album-btn");
 
-function enterAlbum() {
+// 顯示封面
+function showCover() {
+  if (!coverScreen) return;
+  coverScreen.classList.remove("hidden");
+  window.scrollTo({ top: 0, behavior: "instant" });
+}
+
+// 進入收藏冊內容頁
+function enterAlbum(pushState = true) {
   if (!coverScreen) return;
   coverScreen.classList.add("hidden"); // 隱藏封面
 
-  // 🔥 進入內容頁時新增一筆歷史紀錄
-  history.pushState({ page: "album" }, "", "#album");
-
-  // 確保進來時在「收藏冊」分頁
+  // 切到「收藏冊」分頁
   const albumTabBtn = document.querySelector('[data-target="album-view"]');
   if (albumTabBtn) {
     albumTabBtn.click();
+  }
+
+  // 第一次進內容頁時，把狀態推進 history
+  if (pushState && window.history && history.pushState) {
+    history.pushState({ page: "album" }, "", "#album");
   }
 }
 
 // 點整個封面（空白也算）
 if (coverScreen) {
-  coverScreen.addEventListener("click", enterAlbum);
+  coverScreen.addEventListener("click", () => enterAlbum(true));
 }
 
 // 點封面卡片本身
 if (coverCard) {
   coverCard.addEventListener("click", (e) => {
     e.stopPropagation();
-    enterAlbum();
+    enterAlbum(true);
   });
 }
 
-// 點按鈕
+// 點「進入我的收藏冊」按鈕
 if (enterAlbumBtn) {
   enterAlbumBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    enterAlbum();
+    enterAlbum(true);
   });
 }
-// ===== 封面畫面控制結束 =====
-function showCover() {
-  coverScreen.classList.remove("hidden");
 
-  // 同時確保頁面回到最上面（避免卡在中間）
-  window.scrollTo({ top: 0, behavior: "instant" });
+// 監聽瀏覽器上一頁 / 下一頁
+window.addEventListener("popstate", (event) => {
+  // 沒有 state 或不是 album，就顯示封面
+  if (!event.state || event.state.page !== "album") {
+    showCover();
+  } else {
+    // 回到 album 狀態時，確保封面關掉（但不要再 pushState）
+    enterAlbum(false);
+  }
+});
 
-  // 導航切回「封面頁」視覺，但你不需要切 tab（封面本身已經蓋住全部）
-}
+// ===== 以下是原本的主程式邏輯 =====
 
 let currentPageIndex = 0;
-
 
 // Tabs 切換
 const tabButtons = document.querySelectorAll(".tab-button");
@@ -307,7 +320,7 @@ async function warmAlbumSnapshot() {
   try {
     const album = document.querySelector(".album");
     // 等下一幀，確保 renderAlbum() 的 DOM 已經真的畫到螢幕上
-    await new Promise(r => requestAnimationFrame(() => r()));
+    await new Promise((r) => requestAnimationFrame(() => r()));
     const canvas = await html2canvas(album, { backgroundColor: null, scale: 1 });
     albumSnapshotCache = canvas.toDataURL("image/png");
   } catch (e) {
@@ -323,11 +336,14 @@ async function bookFlip(direction, onMidFlip) {
   const shadow = document.getElementById("pageFlipShadow");
   if (!album || !paper || !shadow) return;
 
-  if (album.classList.contains("is-bookflip-next") || album.classList.contains("is-bookflip-prev")) return;
+  if (
+    album.classList.contains("is-bookflip-next") ||
+    album.classList.contains("is-bookflip-prev")
+  )
+    return;
 
-  // ✅ 1) 先用「快取快照」立即開始動畫（最順的關鍵）
+  // 1) 先用快取快照立即開始動畫
   if (!albumSnapshotCache) {
-    // 第一次沒有 cache 才現截（會慢一點點）
     await warmAlbumSnapshot();
   }
   paper.style.backgroundImage = `url(${albumSnapshotCache})`;
@@ -338,16 +354,15 @@ async function bookFlip(direction, onMidFlip) {
 
   album.classList.add(isPrev ? "is-bookflip-prev" : "is-bookflip-next");
 
-  // ✅ 2) 翻到一半換內容
+  // 2) 翻到一半換內容
   setTimeout(() => {
     onMidFlip?.();
   }, 360);
 
-  // ✅ 3) 翻完清掉狀態 + 再預先截下一張（備用）
+  // 3) 翻完清掉狀態 + 再預先截下一張
   setTimeout(() => {
     album.classList.remove("is-bookflip-next", "is-bookflip-prev");
     paper.style.backgroundImage = "";
-    // 換完頁後先把新頁快照準備好，下次按就會超順
     warmAlbumSnapshot();
   }, 760);
 }
@@ -357,11 +372,3 @@ loadCards();
 renderAlbum(currentPageIndex);
 applyListFilter();
 renderStats();
-
-// ===== 監聽瀏覽器的上一頁 / 下一頁 =====
-window.addEventListener("popstate", (event) => {
-  // 如果沒有 state ▼ 代表回到封面頁
-  if (!event.state || event.state.page !== "album") {
-    showCover();
-  }
-});

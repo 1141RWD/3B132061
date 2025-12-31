@@ -1256,45 +1256,45 @@ h1, h2, h3, .section-header h2, .brand h1 {
   letter-spacing: 0.4px;
 }
 
-/* === 封面畫面 === */
+/* === 首頁封面畫面 === */
 
 .cover-screen {
   position: fixed;
   inset: 0;
-  background: radial-gradient(circle at top, #fee2f2, #fce7f3, #f9a8d4);
+  z-index: 999;                 /* 一定蓋在最上層 */
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999;
+  background: radial-gradient(circle at top, #ffe4f1, #fce7f3, #fbcfe8);
 }
 
 .cover-inner {
   text-align: center;
-  padding: 32px 24px;
+  padding: 32px 16px;
 }
 
 .cover-card {
-  max-width: 420px;
-  margin: 0 auto 20px;
-  padding: 40px 32px;
+  max-width: 480px;
+  width: 90%;
+  margin: 0 auto 16px;
+  padding: 32px 28px;
   border-radius: 32px;
-  background: #ffffffdd;
-  box-shadow: 0 22px 60px rgba(244, 114, 182, 0.55);
-  border: 1px solid rgba(251, 113, 133, 0.35);
+  background: #ffffff;
+  box-shadow: 0 22px 50px rgba(244, 114, 182, 0.6);
+  border: 1px solid rgba(251, 113, 133, 0.4);
   cursor: pointer;
 }
 
-.cover-title {
-  font-size: 26px;
-  letter-spacing: 0.12em;
-  font-weight: 700;
-  color: #1f2933;
-  margin-bottom: 10px;
+.cover-card-title {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  margin-bottom: 8px;
 }
 
-.cover-subtitle {
+.cover-card-subtitle {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-sub);
 }
 
 .cover-btn {
@@ -1305,8 +1305,12 @@ h1, h2, h3, .section-header h2, .brand h1 {
 .cover-hint {
   margin-top: 8px;
   font-size: 12px;
-  color: rgba(148, 163, 184, 0.9);
+  color: var(--text-sub);
+  opacity: 0.8;
 }
+
+/* 你原本就有 .hidden { display:none; }，封面會用這個 class 來隱藏 */
+
 /* 🔥 這個才是關鍵：加上 hidden 時讓封面整層消失 */
 .cover-screen.hidden {
   opacity: 0;
