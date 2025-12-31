@@ -1284,7 +1284,7 @@ h1, h2, h3, .section-header h2, .brand h1 {
   cursor: pointer;
 }
 
-.cover-card-title {
+.cover-title {
   font-size: 26px;
   letter-spacing: 0.12em;
   font-weight: 700;
@@ -1292,7 +1292,7 @@ h1, h2, h3, .section-header h2, .brand h1 {
   margin-bottom: 10px;
 }
 
-.cover-card-subtitle {
+.cover-subtitle {
   font-size: 14px;
   color: #6b7280;
 }
