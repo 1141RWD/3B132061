@@ -12,10 +12,10 @@ const defaultCards = [
     group: "TWICE",
     member: "Mina",
     category: "小卡",
-    series: "Fancy You",
+    series: "測試",
     gotDate: "2024-05-01",
     note: "測試圖片",
-    imageUrl: "img/mina.jpg",
+    imageUrl: "mina.jpg",   // ✅ 這邊填 GitHub 上的檔名
     isFavorite: true,
     pageIndex: 0,
     slotIndex: 0
@@ -26,10 +26,10 @@ const defaultCards = [
     group: "TWICE",
     member: "Momo",
     category: "小卡",
-    series: "Fancy You",
+    series: "測試",
     gotDate: "2024-06-10",
     note: "測試圖片",
-    imageUrl: "img/momo.jpg",
+    imageUrl: "momo.jpg",
     isFavorite: false,
     pageIndex: 0,
     slotIndex: 1
@@ -40,10 +40,10 @@ const defaultCards = [
     group: "TWICE",
     member: "Nayeon",
     category: "小卡",
-    series: "Feel Special",
+    series: "測試",
     gotDate: "2024-03-20",
     note: "測試圖片",
-    imageUrl: "img/nayeon.jpg",
+    imageUrl: "nayeon.jpg",
     isFavorite: false,
     pageIndex: 0,
     slotIndex: 2
@@ -54,10 +54,10 @@ const defaultCards = [
     group: "TWICE",
     member: "Sana",
     category: "小卡",
-    series: "Fancy You",
+    series: "測試",
     gotDate: "2024-04-15",
     note: "測試圖片",
-    imageUrl: "img/sana.jpg",
+    imageUrl: "sana.jpg",
     isFavorite: false,
     pageIndex: 0,
     slotIndex: 3
@@ -70,33 +70,13 @@ let pendingSlotForNewCard = null;
 
 // 讀取 localStorage
 function loadCards() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      cards = [...defaultCards];
-      saveCards();
-      return;
-    }
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      cards = parsed;
-    } else {
-      cards = [...defaultCards];
-      saveCards();
-    }
-  } catch (e) {
-    console.error("loadCards error:", e);
-    cards = [...defaultCards];
-  }
+  // GitHub 版：不要用之前存的資料，永遠用程式裡的 defaultCards
+  cards = [...defaultCards];
 }
 
 // 儲存至 localStorage
 function saveCards() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
-  } catch (e) {
-    console.error("saveCards error:", e);
-  }
+
 }
 
 // 找出可放新卡的 pageIndex & slotIndex
