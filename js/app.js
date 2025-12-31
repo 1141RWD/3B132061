@@ -9,36 +9,36 @@ const enterAlbumBtn = document.getElementById("enter-album-btn");
 
 function enterAlbum() {
   if (!coverScreen) return;
-  coverScreen.classList.add("hidden");  // 利用 CSS .hidden 把封面關掉
+  coverScreen.classList.add("hidden"); // 隱藏封面
 
-  // 確保「收藏冊」這個分頁是打開的
+  // 確保進來時在「收藏冊」分頁
   const albumTabBtn = document.querySelector('[data-target="album-view"]');
   if (albumTabBtn) {
     albumTabBtn.click();
   }
 }
 
-// 點整個封面區域（空白處也算）
+// 點整個封面（空白也算）
 if (coverScreen) {
   coverScreen.addEventListener("click", enterAlbum);
 }
 
 // 點封面卡片本身
 if (coverCard) {
-  coverCard.addEventListener("click", function (e) {
-    e.stopPropagation(); // 避免事件冒泡兩次
-    enterAlbum();
-  });
-}
-
-// 點「進入收藏冊」按鈕
-if (enterAlbumBtn) {
-  enterAlbumBtn.addEventListener("click", function (e) {
+  coverCard.addEventListener("click", (e) => {
     e.stopPropagation();
     enterAlbum();
   });
 }
-// ===== 封面結束 =====
+
+// 點按鈕
+if (enterAlbumBtn) {
+  enterAlbumBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    enterAlbum();
+  });
+}
+// ===== 封面畫面控制結束 =====
 
 // Tabs 切換
 const tabButtons = document.querySelectorAll(".tab-button");

@@ -1265,7 +1265,7 @@ h1, h2, h3, .section-header h2, .brand h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999; /* 蓋在整個頁面上 */
+  z-index: 999;
 }
 
 .cover-inner {
@@ -1279,23 +1279,22 @@ h1, h2, h3, .section-header h2, .brand h1 {
   padding: 40px 32px;
   border-radius: 32px;
   background: #ffffffdd;
-  box-shadow: 0 22px 60px rgba(244, 114, 182, 0.6);
+  box-shadow: 0 22px 60px rgba(244, 114, 182, 0.55);
   border: 1px solid rgba(251, 113, 133, 0.35);
   cursor: pointer;
 }
 
 .cover-card-title {
-  font-family: var(--font-ui);
   font-size: 26px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   font-weight: 700;
-  color: var(--text-main);
+  color: #1f2933;
   margin-bottom: 10px;
 }
 
 .cover-card-subtitle {
   font-size: 14px;
-  color: var(--text-sub);
+  color: #6b7280;
 }
 
 .cover-btn {
@@ -1309,4 +1308,4 @@ h1, h2, h3, .section-header h2, .brand h1 {
   color: rgba(148, 163, 184, 0.9);
 }
 
-/* 隱藏封面用（沿用原本 .hidden 規則） */
+/* 你原本就有 .hidden { display:none; }，封面會用它來消失 */

@@ -1,10 +1,10 @@
 // js/data.js
 
-const STORAGE_KEY = "idol_collection_cards_v2";
-// 每頁 6 格
+const STORAGE_KEY = "idol_collection_cards_github_demo";
+// 每頁 8 格
 const SLOTS_PER_PAGE = 8;
 
-// 初始假資料
+// 初始假資料（第一頁 4 張 TWICE）
 const defaultCards = [
   {
     id: 1,
@@ -12,10 +12,10 @@ const defaultCards = [
     group: "TWICE",
     member: "Mina",
     category: "小卡",
-    series: "測試",
+    series: "Fancy You",
     gotDate: "2024-05-01",
     note: "測試圖片",
-    imageUrl: "mina.jpg",   // ✅ 這邊填 GitHub 上的檔名
+    imageUrl: "mina.jpg", // 如果你有移到 img 資料夾就改成 "img/mina.jpg"
     isFavorite: true,
     pageIndex: 0,
     slotIndex: 0
@@ -26,7 +26,7 @@ const defaultCards = [
     group: "TWICE",
     member: "Momo",
     category: "小卡",
-    series: "測試",
+    series: "Fancy You",
     gotDate: "2024-06-10",
     note: "測試圖片",
     imageUrl: "momo.jpg",
@@ -40,7 +40,7 @@ const defaultCards = [
     group: "TWICE",
     member: "Nayeon",
     category: "小卡",
-    series: "測試",
+    series: "Feel Special",
     gotDate: "2024-03-20",
     note: "測試圖片",
     imageUrl: "nayeon.jpg",
@@ -54,7 +54,7 @@ const defaultCards = [
     group: "TWICE",
     member: "Sana",
     category: "小卡",
-    series: "測試",
+    series: "Fancy You",
     gotDate: "2024-04-15",
     note: "測試圖片",
     imageUrl: "sana.jpg",
@@ -65,18 +65,17 @@ const defaultCards = [
 ];
 
 let cards = [];
-// 這個變數用來記錄：使用者點了哪一格空插槽要新增
+// 用來記錄：使用者點了哪一格空插槽要新增
 let pendingSlotForNewCard = null;
 
-// 讀取 localStorage
+// 🔹 GitHub 版本：不要讀 localStorage，永遠用程式裡的 defaultCards
 function loadCards() {
-  // GitHub 版：不要用之前存的資料，永遠用程式裡的 defaultCards
   cards = [...defaultCards];
 }
 
-// 儲存至 localStorage
+// 🔹 GitHub 版本：先不存資料，重整就回到預設
 function saveCards() {
-
+  // 留空即可
 }
 
 // 找出可放新卡的 pageIndex & slotIndex
