@@ -1,6 +1,6 @@
 // js/data.js
 
-const STORAGE_KEY = "idol_collection_cards_v1";
+const STORAGE_KEY = "idol_collection_cards_v2";
 // 每頁 6 格
 const SLOTS_PER_PAGE = 8;
 
