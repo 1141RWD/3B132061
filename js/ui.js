@@ -440,6 +440,25 @@ function renderAchievements() {
       label: "本命達人",
       desc: "本命卡數量 ≥ 3。",
       unlockedNow: favCount >= 3
+    },
+    {
+      id: "twice-5",
+      label: "TWICE 小富翁",
+      desc: "TWICE 收藏達 5 張。",
+      unlockedNow: cards.filter(c => normalizeGroupName(c.group) === "TWICE").length >= 5
+    },
+    {
+      id: "full-page-1",
+      label: "滿頁收藏家",
+      desc: "完成任意一頁（12 格全滿）。",
+      unlockedNow: (() => {
+        const maxPage = getMaxPageIndex();
+        for (let p = 0; p <= maxPage; p++) {
+          const count = cards.filter(c => c.pageIndex === p).length;
+          if (count >= SLOTS_PER_PAGE) return true;
+        }
+        return false;
+      })()
     }
   ];
 
