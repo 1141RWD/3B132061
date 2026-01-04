@@ -61,6 +61,186 @@ window.addEventListener("popstate", (event) => {
   }
 });
 
+// ===============================
+// Smart Add：圖片 → 推論團體/成員（可接 AI）
+// ===============================
+
+// 1) 成員對照表（你可以一直加）
+const MEMBER_DB = {
+  TWICE: ["Mina", "Momo", "Nayeon", "Sana", "Tzuyu", "Jihyo", "Jeongyeon", "Dahyun", "Chaeyoung"],
+  MAMAMOO: ["Solar", "Moonbyul", "Wheein", "Hwasa"],
+  VIVIZ: ["Eunha", "SinB", "Umji"]
+};
+
+// 2) 產生 alias（小寫匹配用）
+const ALIAS_MAP = (() => {
+  const map = new Map();
+  for (const [group, members] of Object.entries(MEMBER_DB)) {
+    for (const m of members) {
+      map.set(m.toLowerCase(), { group, member: m });
+      // 你可自行加常見暱稱 / 拼法
+      if (m === "Jeongyeon") map.set("jungyeon", { group, member: m });
+      if (m === "Moonbyul") map.set("moonbyul", { group, member: m });
+      if (m === "SinB") map.set("sinb", { group, member: m });
+    }
+  }
+  // 團體關鍵字（路徑/網址裡有也算）
+  map.set("twice", { group: "TWICE", member: "" });
+  map.set("mamamoo", { group: "MAMAMOO", member: "" });
+  map.set("viviz", { group: "VIVIZ", member: "" });
+  return map;
+})();
+
+// 3) 解析字串（從 URL/檔名抓關鍵字）
+function extractTokensFromImageRef(imageRef) {
+  if (!imageRef) return [];
+  try {
+    // 去掉 query/hash，取最後一段檔名
+    const clean = decodeURIComponent(imageRef.split("#")[0].split("?")[0]);
+    const last = clean.split("/").pop() || clean;
+    // 去掉副檔名
+    const base = last.replace(/\.(png|jpg|jpeg|webp|gif)$/i, "");
+    // 以非字母數字切割
+    return base.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  } catch {
+    return imageRef.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  }
+}
+
+// 4) 本地規則推論（不靠 AI，最穩）
+function inferLocal(imageRef) {
+  const tokens = extractTokensFromImageRef(imageRef);
+  let guessedGroup = "";
+  let guessedMember = "";
+
+  for (const t of tokens) {
+    const hit = ALIAS_MAP.get(t);
+    if (!hit) continue;
+
+    if (hit.member && !guessedMember) {
+      guessedMember = hit.member;
+      guessedGroup = hit.group;
+      break; // 找到成員就很強，直接收工
+    }
+    if (hit.group && !guessedGroup) {
+      guessedGroup = hit.group;
+    }
+  }
+
+  // 如果只有成員沒團體（理論上不會），補回去
+  if (guessedMember && !guessedGroup) {
+    for (const [g, ms] of Object.entries(MEMBER_DB)) {
+      if (ms.some((x) => x.toLowerCase() === guessedMember.toLowerCase())) {
+        guessedGroup = g;
+        break;
+      }
+    }
+  }
+
+  return { group: guessedGroup, member: guessedMember, confidence: guessedMember ? 0.9 : guessedGroup ? 0.6 : 0.0 };
+}
+
+// 5) 未來 AI 接口（先保留架構，現在回傳 null）
+async function inferFromAI(/* imageRef */) {
+  // ✅ 之後你要接 AI 時，把這邊換成 fetch 到你的 API 即可，例如：
+  // const res = await fetch("/api/infer", { method:"POST", body: JSON.stringify({ imageRef }) });
+  // return await res.json(); // { group, member, confidence }
+  return null;
+}
+
+// 6) 統一推論入口（先本地、再 AI）
+async function inferFromImage(imageRef) {
+  const local = inferLocal(imageRef);
+  if (local.confidence >= 0.9) return local;
+
+  const ai = await inferFromAI(imageRef);
+  if (ai && (ai.group || ai.member)) return ai;
+
+  return local;
+}
+
+// 7) 綁定新增 modal 的 UI 行為
+function wireSmartAddModal() {
+  const imageInput = document.getElementById("add-image");
+  const nameInput = document.getElementById("add-name");
+  const groupInput = document.getElementById("add-group");
+  const memberInput = document.getElementById("add-member");
+  const catSelect = document.getElementById("add-category");
+  const statusEl = document.getElementById("smart-status");
+  const previewEl = document.getElementById("add-image-preview");
+  const toggleBtn = document.getElementById("toggle-advanced");
+  const advArea = document.getElementById("advanced-area");
+
+  if (!imageInput || !statusEl || !previewEl) return;
+
+  // 進階收合
+  if (toggleBtn && advArea) {
+    toggleBtn.addEventListener("click", () => {
+      advArea.classList.toggle("hidden");
+      toggleBtn.textContent = advArea.classList.contains("hidden") ? "進階設定" : "收合進階";
+    });
+  }
+
+  async function runInfer() {
+    const ref = imageInput.value.trim();
+
+    // 預覽（有圖就顯示）
+    if (ref) {
+      previewEl.classList.add("has-img");
+      previewEl.style.backgroundImage = `url(${ref})`;
+    } else {
+      previewEl.classList.remove("has-img");
+      previewEl.style.backgroundImage = "";
+    }
+
+    const result = await inferFromImage(ref);
+
+    // 自動填入（不要覆蓋使用者已手動輸入的內容：只有空白才填）
+    if (result.group && !groupInput.value.trim()) groupInput.value = result.group;
+    if (result.member && !memberInput.value.trim()) memberInput.value = result.member;
+
+    // 名稱自動帶入（只有空白才帶）
+    if (!nameInput.value.trim()) {
+      const cat = catSelect?.value || "小卡";
+      if (result.member) nameInput.value = `${result.member} ${cat}`;
+    }
+
+    // 提示文案
+    if (result.member && result.group) {
+      statusEl.className = "smart-status ok";
+      statusEl.textContent = `已自動判斷：${result.group} · ${result.member}（可直接按「加入收藏」或自行修改）`;
+    } else if (result.group) {
+      statusEl.className = "smart-status warn";
+      statusEl.textContent = `判斷到團體：${result.group}（成員不確定，你可以補一下）`;
+    } else if (ref) {
+      statusEl.className = "smart-status warn";
+      statusEl.textContent = "圖片已填入，但目前無法判斷團體/成員（你可以手動輸入）";
+    } else {
+      statusEl.className = "smart-status";
+      statusEl.textContent = "貼上圖片後會自動填入「團體 / 成員」，你只要確認就好";
+    }
+  }
+
+  // 貼上/輸入後推論
+  imageInput.addEventListener("change", runInfer);
+  imageInput.addEventListener("blur", runInfer);
+
+  // 類別改變時，如果名稱還空白，更新名稱
+  if (catSelect) {
+    catSelect.addEventListener("change", () => {
+      if (!nameInput.value.trim()) {
+        const m = memberInput.value.trim();
+        if (m) nameInput.value = `${m} ${catSelect.value}`;
+      }
+    });
+  }
+}
+
+// ✅ 等 DOM ready 後綁定（避免抓不到元素）
+document.addEventListener("DOMContentLoaded", () => {
+  wireSmartAddModal();
+});
+
 // ===== 以下是原本的主程式邏輯 =====
 
 let currentPageIndex = 0;

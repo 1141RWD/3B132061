@@ -1320,3 +1320,112 @@ h1, h2, h3, .section-header h2, .brand h1 {
   transition: opacity 0.25s ease-out;
 }
 /* 你原本就有 .hidden { display:none; }，封面會用它來消失 */
+
+/* === Smart Add Modal（極簡新增 + 自動判斷） === */
+.smart-add .label-title{
+  display:block;
+  font-weight:700;
+  margin-bottom:8px;
+}
+
+.smart-row{
+  display:flex;
+  gap:16px;
+  margin-top:12px;
+  align-items:flex-start;
+}
+
+.image-preview{
+  width:120px;
+  height:120px;
+  border-radius:16px;
+  background:#f8fafc;
+  border:1px dashed rgba(251,113,133,0.6);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:rgba(100,116,139,0.9);
+  font-size:12px;
+  overflow:hidden;
+  flex:0 0 auto;
+}
+
+.image-preview.has-img{
+  border-style:solid;
+  background-size:cover;
+  background-position:center;
+  color:transparent;
+}
+
+.smart-meta{
+  flex:1;
+  min-width:0;
+}
+
+.smart-status{
+  font-size:13px;
+  line-height:1.5;
+  color:rgba(100,116,139,0.95);
+  margin-bottom:10px;
+}
+
+.smart-status.ok{
+  color:rgba(15,118,110,0.95);
+  font-weight:600;
+}
+
+.smart-status.warn{
+  color:rgba(180,83,9,0.95);
+  font-weight:600;
+}
+
+.smart-pills{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+.pill{
+  display:inline-flex;
+  align-items:center;
+  height:28px;
+  padding:0 12px;
+  border-radius:999px;
+  background:#fff;
+  border:1px solid rgba(251,113,133,0.35);
+  font-size:12px;
+}
+
+.mini-select{
+  height:32px;
+  border-radius:12px;
+  padding:0 10px;
+}
+
+.ghost-btn{
+  height:32px;
+  padding:0 12px;
+  border-radius:12px;
+  background:rgba(255,255,255,0.9);
+  border:1px solid rgba(251,113,133,0.35);
+  cursor:pointer;
+}
+
+.two-col{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.advanced-area{
+  margin-top:8px;
+  padding-top:8px;
+  border-top:1px dashed rgba(251,113,133,0.35);
+}
+
+.advanced-hint{
+  font-size:12px;
+  color:rgba(100,116,139,0.9);
+  margin-bottom:8px;
+}

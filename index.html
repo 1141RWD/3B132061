@@ -204,46 +204,79 @@
     <div class="modal-content">
       <button class="modal-close" data-close-modal>&times;</button>
       <h3>新增收藏</h3>
-      <form id="add-card-form" class="form-grid">
-        <label>
-          名稱
-          <input type="text" id="add-name" required />
-        </label>
-        <label>
-          團體
-          <input type="text" id="add-group" />
-        </label>
-        <label>
-          成員
-          <input type="text" id="add-member" />
-        </label>
-        <label>
-          類別
-          <select id="add-category">
-            <option value="小卡">小卡</option>
-            <option value="專輯">專輯</option>
-            <option value="周邊">周邊</option>
-            <option value="徽章">徽章</option>
-          </select>
-        </label>
-        <label>
-          圖片網址
-          <input type="text" id="add-image" placeholder="先貼圖片連結，也能留白" />
-        </label>
-        <label>
-          獲得日期
-          <input type="date" id="add-date" />
-        </label>
-        <label>
-          系列 / 版本
-          <input type="text" id="add-series" />
-        </label>
+      <form id="add-card-form" class="form-grid smart-add">
+        <!-- 圖片：優先，貼了就幫你判斷 -->
+        <div class="full-row">
+          <label class="label-title">圖片網址（貼上後自動判斷團體/成員）</label>
+          <input type="text" id="add-image" placeholder="例如：img/mina.jpg 或 https://..." />
+          <div class="smart-row">
+            <div id="add-image-preview" class="image-preview is-empty">預覽</div>
+
+            <div class="smart-meta">
+              <div id="smart-status" class="smart-status">
+                貼上圖片後會自動填入「團體 / 成員」，你只要確認就好
+              </div>
+
+              <div class="smart-pills">
+                <span class="pill">類別</span>
+                <select id="add-category" class="mini-select">
+                  <option value="小卡" selected>小卡</option>
+                  <option value="專輯">專輯</option>
+                  <option value="周邊">周邊</option>
+                  <option value="徽章">徽章</option>
+                </select>
+
+                <button type="button" id="toggle-advanced" class="ghost-btn">
+                  進階設定
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 名稱：必填，但可以自動幫你帶入 -->
         <label class="full-row">
-          備註
-          <textarea id="add-note" rows="3"></textarea>
+          名稱（可自動帶入）
+          <input type="text" id="add-name" required placeholder="例如：Mina 小卡" />
         </label>
-        <div class="form-actions">
-          <button type="submit" class="primary-btn">新增</button>
+
+        <!-- 自動判斷：預設先鎖起來讓人覺得很聰明（但可以改） -->
+        <div class="two-col">
+          <label>
+            團體（自動判斷，可修改）
+            <input type="text" id="add-group" placeholder="例如：TWICE" />
+          </label>
+          <label>
+            成員（自動判斷，可修改）
+            <input type="text" id="add-member" placeholder="例如：Mina" />
+          </label>
+        </div>
+
+        <!-- 備註：留下來，符合你想要使用者只填備註 -->
+        <label class="full-row">
+          備註（選填）
+          <textarea id="add-note" rows="3" placeholder="例如：在哪裡抽到、跟誰換到、想記錄什麼"></textarea>
+        </label>
+
+        <!-- 進階欄位：先收起來（你原本的日期/系列先不放，真的要再加回來） -->
+        <div id="advanced-area" class="advanced-area hidden">
+          <div class="advanced-hint">進階資訊（可不填）</div>
+
+          <!-- 你如果未來要加回獲得日期 / 系列版本，就放這裡 -->
+          <!--
+          <label>
+            獲得日期
+            <input type="date" id="add-date" />
+          </label>
+          <label>
+            系列 / 版本
+            <input type="text" id="add-series" />
+          </label>
+          -->
+        </div>
+
+        <div class="form-actions full-row">
+          <button type="submit" class="primary-btn">加入收藏</button>
         </div>
       </form>
     </div>
