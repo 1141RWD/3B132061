@@ -1,704 +1,534 @@
 // js/app.js
-
-// ===== 首頁封面 + 瀏覽器上一頁控制 =====
-const coverScreen = document.getElementById("cover-screen");
-const coverCard = document.getElementById("cover-card");
-const enterAlbumBtn = document.getElementById("enter-album-btn");
-
-// 顯示封面
-function showCover() {
-  if (!coverScreen) return;
-  coverScreen.classList.remove("hidden");
-  window.scrollTo({ top: 0, behavior: "instant" });
-}
-
-// 進入收藏冊內容頁
-function enterAlbum(pushState = true) {
-  if (!coverScreen) return;
-  coverScreen.classList.add("hidden"); // 隱藏封面
-
-  // 切到「收藏冊」分頁
-  const albumTabBtn = document.querySelector('[data-target="album-view"]');
-  if (albumTabBtn) {
-    albumTabBtn.click();
-  }
-
-  // 第一次進內容頁時，把狀態推進 history
-  if (pushState && window.history && history.pushState) {
-    history.pushState({ page: "album" }, "", "#album");
-  }
-}
-
-// 點整個封面（空白也算）
-if (coverScreen) {
-  coverScreen.addEventListener("click", () => enterAlbum(true));
-}
-
-// 點封面卡片本身
-if (coverCard) {
-  coverCard.addEventListener("click", (e) => {
-    e.stopPropagation();
-    enterAlbum(true);
-  });
-}
-
-// 點「進入我的收藏冊」按鈕
-if (enterAlbumBtn) {
-  enterAlbumBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    enterAlbum(true);
-  });
-}
-
-// 監聽瀏覽器上一頁 / 下一頁
-window.addEventListener("popstate", (event) => {
-  // 沒有 state 或不是 album，就顯示封面
-  if (!event.state || event.state.page !== "album") {
-    showCover();
-  } else {
-    // 回到 album 狀態時，確保封面關掉（但不要再 pushState）
-    enterAlbum(false);
-  }
-});
-
 // ===============================
-// Smart Add：圖片 → 推論團體/成員（可接 AI）
+// 0) 等 DOM 好了再跑，避免抓不到元素
 // ===============================
-
-// 1) 成員對照表（你可以一直加）
-const MEMBER_DB = {
-  TWICE: ["Mina", "Momo", "Nayeon", "Sana", "Tzuyu", "Jihyo", "Jeongyeon", "Dahyun", "Chaeyoung"],
-  MAMAMOO: ["Solar", "Moonbyul", "Wheein", "Hwasa"],
-  VIVIZ: ["Eunha", "SinB", "Umji"]
-};
-
-// 2) 產生 alias（小寫匹配用）
-const ALIAS_MAP = (() => {
-  const map = new Map();
-  for (const [group, members] of Object.entries(MEMBER_DB)) {
-    for (const m of members) {
-      map.set(m.toLowerCase(), { group, member: m });
-      // 你可自行加常見暱稱 / 拼法
-      if (m === "Jeongyeon") map.set("jungyeon", { group, member: m });
-      if (m === "Moonbyul") map.set("moonbyul", { group, member: m });
-      if (m === "SinB") map.set("sinb", { group, member: m });
-    }
-  }
-  // 團體關鍵字（路徑/網址裡有也算）
-  map.set("twice", { group: "TWICE", member: "" });
-  map.set("mamamoo", { group: "MAMAMOO", member: "" });
-  map.set("viviz", { group: "VIVIZ", member: "" });
-  return map;
-})();
-
-// 3) 解析字串（從 URL/檔名抓關鍵字）
-function extractTokensFromImageRef(imageRef) {
-  if (!imageRef) return [];
-  try {
-    // 去掉 query/hash，取最後一段檔名
-    const clean = decodeURIComponent(imageRef.split("#")[0].split("?")[0]);
-    const last = clean.split("/").pop() || clean;
-    // 去掉副檔名
-    const base = last.replace(/\.(png|jpg|jpeg|webp|gif)$/i, "");
-    // 以非字母數字切割
-    return base.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-  } catch {
-    return imageRef.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-  }
-}
-
-// 4) 本地規則推論（不靠 AI，最穩）
-function inferLocal(imageRef) {
-  const tokens = extractTokensFromImageRef(imageRef);
-  let guessedGroup = "";
-  let guessedMember = "";
-
-  for (const t of tokens) {
-    const hit = ALIAS_MAP.get(t);
-    if (!hit) continue;
-
-    if (hit.member && !guessedMember) {
-      guessedMember = hit.member;
-      guessedGroup = hit.group;
-      break; // 找到成員就很強，直接收工
-    }
-    if (hit.group && !guessedGroup) {
-      guessedGroup = hit.group;
-    }
-  }
-
-  // 如果只有成員沒團體（理論上不會），補回去
-  if (guessedMember && !guessedGroup) {
-    for (const [g, ms] of Object.entries(MEMBER_DB)) {
-      if (ms.some((x) => x.toLowerCase() === guessedMember.toLowerCase())) {
-        guessedGroup = g;
-        break;
-      }
-    }
-  }
-
-  return { group: guessedGroup, member: guessedMember, confidence: guessedMember ? 0.9 : guessedGroup ? 0.6 : 0.0 };
-}
-
-// 5) 未來 AI 接口（先保留架構，現在回傳 null）
-async function inferFromAI(/* imageRef */) {
-  // ✅ 之後你要接 AI 時，把這邊換成 fetch 到你的 API 即可，例如：
-  // const res = await fetch("/api/infer", { method:"POST", body: JSON.stringify({ imageRef }) });
-  // return await res.json(); // { group, member, confidence }
-  return null;
-}
-
-// 6) 統一推論入口（先本地、再 AI）
-async function inferFromImage(imageRef) {
-  const local = inferLocal(imageRef);
-  if (local.confidence >= 0.9) return local;
-
-  const ai = await inferFromAI(imageRef);
-  if (ai && (ai.group || ai.member)) return ai;
-
-  return local;
-}
-
-// 7) 綁定新增 modal 的 UI 行為
-function wireSmartAddModal() {
-  const imageInput = document.getElementById("add-image");
-  const nameInput = document.getElementById("add-name");
-  const groupInput = document.getElementById("add-group");
-  const memberInput = document.getElementById("add-member");
-  const catSelect = document.getElementById("add-category");
-  const statusEl = document.getElementById("smart-status");
-  const previewEl = document.getElementById("add-image-preview");
-  const toggleBtn = document.getElementById("toggle-advanced");
-  const advArea = document.getElementById("advanced-area");
-  const fileInput = document.getElementById("add-image-file");
-
-
-  if (!imageInput || !statusEl || !previewEl) return;
-
-  // 進階收合
-  if (toggleBtn && advArea) {
-    toggleBtn.addEventListener("click", () => {
-      advArea.classList.toggle("hidden");
-      toggleBtn.textContent = advArea.classList.contains("hidden") ? "進階設定" : "收合進階";
-    });
-  }
-
-  async function runInfer() {
-    const ref = imageInput.value.trim();
-
-    // 預覽（有圖就顯示）
-    if (ref) {
-      previewEl.classList.add("has-img");
-      previewEl.style.backgroundImage = `url(${ref})`;
-    } else {
-      previewEl.classList.remove("has-img");
-      previewEl.style.backgroundImage = "";
-    }
-
-    const result = await inferFromImage(ref);
-
-    // 自動填入（不要覆蓋使用者已手動輸入的內容：只有空白才填）
-    if (result.group && !groupInput.value.trim()) groupInput.value = result.group;
-    if (result.member && !memberInput.value.trim()) memberInput.value = result.member;
-
-    // 名稱自動帶入（只有空白才帶）
-    if (!nameInput.value.trim()) {
-      const cat = catSelect?.value || "小卡";
-      if (result.member) nameInput.value = `${result.member} ${cat}`;
-    }
-
-    // 提示文案
-    if (result.member && result.group) {
-      statusEl.className = "smart-status ok";
-      statusEl.textContent = `已自動判斷：${result.group} · ${result.member}（可直接按「加入收藏」或自行修改）`;
-    } else if (result.group) {
-      statusEl.className = "smart-status warn";
-      statusEl.textContent = `判斷到團體：${result.group}（成員不確定，你可以補一下）`;
-    } else if (ref) {
-      statusEl.className = "smart-status warn";
-      statusEl.textContent = "圖片已填入，但目前無法判斷團體/成員（你可以手動輸入）";
-    } else {
-      statusEl.className = "smart-status";
-      statusEl.textContent = "貼上圖片後會自動填入「團體 / 成員」，你只要確認就好";
-    }
-
-    // 上傳圖片 → 轉成 DataURL → 當成 imageUrl 使用（可預覽、可存）
-    if (fileInput) {
-      fileInput.addEventListener("change", async () => {
-        const file = fileInput.files?.[0];
-        if (!file) return;
-
-        const dataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-
-        // 填入 add-image，沿用你原本的流程
-        imageInput.value = dataUrl;
-        await runInfer();
-      });
-    }
-
-  }
-
-  // 貼上/輸入後推論
-  imageInput.addEventListener("change", runInfer);
-  imageInput.addEventListener("blur", runInfer);
-
-  // 類別改變時，如果名稱還空白，更新名稱
-  if (catSelect) {
-    catSelect.addEventListener("change", () => {
-      if (!nameInput.value.trim()) {
-        const m = memberInput.value.trim();
-        if (m) nameInput.value = `${m} ${catSelect.value}`;
-      }
-    });
-  }
-}
-
-// ✅ 等 DOM ready 後綁定（避免抓不到元素）
 document.addEventListener("DOMContentLoaded", () => {
-  wireSmartAddModal();
-});
+  // ===== 首頁封面 + 瀏覽器上一頁控制 =====
+  const coverScreen = document.getElementById("cover-screen");
+  const coverCard = document.getElementById("cover-card");
+  const enterAlbumBtn = document.getElementById("enter-album-btn");
 
-// ===== 以下是原本的主程式邏輯 =====
+  function showCover() {
+    if (!coverScreen) return;
+    coverScreen.classList.remove("hidden");
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
 
-let currentPageIndex = 0;
+  function enterAlbum(pushState = true) {
+    if (!coverScreen) return;
+    coverScreen.classList.add("hidden");
 
-// Tabs 切換
-const tabButtons = document.querySelectorAll(".tab-button");
-const views = document.querySelectorAll(".view");
+    // 切到「收藏冊」分頁
+    const albumTabBtn = document.querySelector('[data-target="album-view"]');
+    if (albumTabBtn) albumTabBtn.click();
 
-tabButtons.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const target = btn.dataset.target;
-    tabButtons.forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
+    if (pushState && window.history && history.pushState) {
+      history.pushState({ page: "album" }, "", "#album");
+    }
+  }
 
-    views.forEach((v) => {
-      v.classList.toggle("active", v.id === target);
+  // 點整個封面（空白也算）
+  if (coverScreen) coverScreen.addEventListener("click", () => enterAlbum(true));
+
+  // 點封面卡片本身
+  if (coverCard) {
+    coverCard.addEventListener("click", (e) => {
+      e.stopPropagation();
+      enterAlbum(true);
     });
-
-    if (target === "album-view") {
-      renderAlbum(currentPageIndex);
-      warmAlbumSnapshot();
-    } else if (target === "list-view") {
-      applyListFilter();
-    } else if (target === "stats-view") {
-      renderStats();
-    }
-  });
-});
-
-// Album 翻頁（加翻頁動畫）
-document.getElementById("prev-page").addEventListener("click", async () => {
-  await bookFlip("prev", () => {
-    if (currentPageIndex > 0) currentPageIndex--;
-    renderAlbum(currentPageIndex);
-  });
-});
-
-document.getElementById("next-page").addEventListener("click", async () => {
-  await bookFlip("next", () => {
-    currentPageIndex++;
-    renderAlbum(currentPageIndex);
-  });
-});
-
-// Modal 控制
-const cardModal = document.getElementById("card-modal");
-const addModal = document.getElementById("add-modal");
-
-document.querySelectorAll("[data-close-modal]").forEach((el) => {
-  el.addEventListener("click", () => closeAllModals());
-});
-
-function closeAllModals() {
-  cardModal.classList.add("hidden");
-  addModal.classList.add("hidden");
-}
-
-// 被 ui.js 呼叫：開啟新增 Modal
-function openAddModal() {
-  const form = document.getElementById("add-card-form");
-  form.reset();
-  addModal.classList.remove("hidden");
-  document.getElementById("add-name").focus();
-}
-
-function openCardModal(cardId) {
-  const card = findCardById(cardId);
-  if (!card) return;
-
-  cardModal.dataset.cardId = card.id;
-
-  const pageLabel = `第 ${card.pageIndex + 1} 頁`;
-  const slotLabel = `第 ${card.slotIndex + 1} 格`;
-
-  // 左側大圖 & 標籤
-  const imgDiv = document.getElementById("detail-image");
-  if (card.imageUrl) {
-    imgDiv.style.backgroundImage = `url(${card.imageUrl})`;
-  } else {
-    imgDiv.style.backgroundImage = "";
   }
 
-  document.getElementById("detail-group-tag").textContent =
-    card.group || "UNKNOWN";
-
-  const catPill = document.getElementById("detail-category-pill");
-  catPill.textContent = card.category || "未分類";
-
-  const favPill = document.getElementById("detail-fav-pill");
-  if (card.isFavorite) {
-    favPill.classList.remove("is-hidden");
-  } else {
-    favPill.classList.add("is-hidden");
+  // 點「進入我的收藏冊」按鈕
+  if (enterAlbumBtn) {
+    enterAlbumBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      enterAlbum(true);
+    });
   }
 
-  // 右側基本資訊
-  document.getElementById("detail-name").textContent = card.name;
-  document.getElementById("detail-subname").textContent = [
-    card.group || "未設定團體",
-    card.member || ""
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
-  const noteText =
-    card.note && card.note.trim().length > 0
-      ? card.note
-      : "這張收藏目前還沒有備註，可以之後再補上～";
-  document.getElementById("detail-note").textContent = noteText;
-
-  document.getElementById("detail-series").textContent =
-    card.series || "—";
-  document.getElementById("detail-date").textContent =
-    card.gotDate || "—";
-
-  document.getElementById("detail-page").textContent = pageLabel;
-  document.getElementById("detail-slot").textContent = slotLabel;
-  document.getElementById("detail-status").textContent = card.isFavorite
-    ? "本命卡 · In Binder"
-    : "一般收藏 · In Binder";
-
-  // 本命按鈕文字
-  const toggleBtn = document.getElementById("toggle-favorite-btn");
-  toggleBtn.textContent = card.isFavorite ? "取消本命標記" : "設為本命卡 💖";
-
-  cardModal.classList.remove("hidden");
-}
-
-// Modal backdrop click
-[cardModal, addModal].forEach((modal) => {
-  const backdrop = modal.querySelector(".modal-backdrop");
-  backdrop.addEventListener("click", () => closeAllModals());
-});
-
-// 本命切換
-document
-  .getElementById("toggle-favorite-btn")
-  .addEventListener("click", () => {
-    const id = Number(cardModal.dataset.cardId);
-    const card = findCardById(id);
-    if (!card) return;
-    card.isFavorite = !card.isFavorite;
-    saveCards();
-
-    // 更新畫面
-    renderAlbum(currentPageIndex);
-    applyListFilter();
-    renderStats();
-    openCardModal(id); // 重新更新文字
-  });
-
-// 刪除卡片
-document.getElementById("delete-card-btn").addEventListener("click", () => {
-  const id = Number(cardModal.dataset.cardId);
-  if (!id) return;
-
-  if (!confirm("確定要刪除這張收藏嗎？")) return;
-
-  cards = cards.filter((c) => c.id !== id);
-  saveCards();
-  closeAllModals();
-  const maxPage = getMaxPageIndex();
-  if (currentPageIndex > maxPage) {
-    currentPageIndex = maxPage;
-  }
-  renderAlbum(currentPageIndex);
-  applyListFilter();
-  renderStats();
-});
-
-// 新增表單提交
-document
-  .getElementById("add-card-form")
-  .addEventListener("submit", (e) => {
-    e.preventDefault();
-
-    const name = document.getElementById("add-name").value.trim();
-    if (!name) return;
-
-    const group = document.getElementById("add-group").value.trim();
-    const member = document.getElementById("add-member").value.trim();
-    const category = document.getElementById("add-category").value;
-    const imageUrl = document.getElementById("add-image").value.trim();
-    const gotDate = document.getElementById("add-date").value;
-    const series = document.getElementById("add-series").value.trim();
-    const note = document.getElementById("add-note").value.trim();
-
-    // 如果有指定要新增到哪一格，就用 pendingSlotForNewCard
-    let target;
-    if (pendingSlotForNewCard) {
-      target = {
-        pageIndex: pendingSlotForNewCard.pageIndex,
-        slotIndex: pendingSlotForNewCard.slotIndex
-      };
+  // 監聽瀏覽器上一頁/下一頁
+  window.addEventListener("popstate", (event) => {
+    if (!event.state || event.state.page !== "album") {
+      showCover();
     } else {
-      target = findFirstEmptySlot();
+      enterAlbum(false);
     }
-    pendingSlotForNewCard = null;
-
-    const newCard = {
-      id: Date.now(),
-      name,
-      group,
-      member,
-      category,
-      series,
-      gotDate,
-      note,
-      imageUrl,
-      isFavorite: false,
-      pageIndex: target.pageIndex,
-      slotIndex: target.slotIndex
-    };
-
-    cards.push(newCard);
-    saveCards();
-    closeAllModals();
-
-    currentPageIndex = target.pageIndex;
-    renderAlbum(currentPageIndex);
-    applyListFilter();
-    renderStats();
   });
 
-// List filter
-const searchInput = document.getElementById("search-input");
-const categoryFilter = document.getElementById("category-filter");
-const favoriteFilter = document.getElementById("favorite-filter");
+  // ===============================
+  // 1) 主程式狀態
+  // ===============================
+  window.currentPageIndex = window.currentPageIndex ?? 0;
 
-[searchInput, categoryFilter, favoriteFilter].forEach((el) => {
-  el.addEventListener("input", () => applyListFilter());
-});
+  // ===============================
+  // 2) Tabs 切換
+  // ===============================
+  const tabButtons = document.querySelectorAll(".tab-button");
+  const views = document.querySelectorAll(".view");
 
-function applyListFilter() {
-  const filter = {
-    keyword: searchInput.value || "",
-    category: categoryFilter.value || "",
-    favoriteOnly: favoriteFilter.value === "favorite"
+  tabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.target;
+      tabButtons.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      views.forEach((v) => v.classList.toggle("active", v.id === target));
+
+      if (target === "album-view") {
+        renderAlbum(currentPageIndex);
+        warmAlbumSnapshot();
+      } else if (target === "list-view") {
+        applyListFilter();
+      } else if (target === "stats-view") {
+        renderStats();
+      }
+    });
+  });
+
+  // ===============================
+  // 3) Album 翻頁（含翻頁動畫）
+  // ===============================
+  const prevBtn = document.getElementById("prev-page");
+  const nextBtn = document.getElementById("next-page");
+
+  if (prevBtn) {
+    prevBtn.addEventListener("click", async () => {
+      await bookFlip("prev", () => {
+        if (currentPageIndex > 0) currentPageIndex--;
+        renderAlbum(currentPageIndex);
+      });
+    });
+  }
+
+  if (nextBtn) {
+    nextBtn.addEventListener("click", async () => {
+      await bookFlip("next", () => {
+        currentPageIndex++;
+        renderAlbum(currentPageIndex);
+      });
+    });
+  }
+
+  // ===============================
+  // 4) Modal 控制
+  // ===============================
+  const cardModal = document.getElementById("card-modal");
+  const addModal = document.getElementById("add-modal");
+
+  document.querySelectorAll("[data-close-modal]").forEach((el) => {
+    el.addEventListener("click", () => closeAllModals());
+  });
+
+  function closeAllModals() {
+    if (cardModal) cardModal.classList.add("hidden");
+    if (addModal) addModal.classList.add("hidden");
+  }
+
+  // Modal backdrop click
+  [cardModal, addModal].forEach((modal) => {
+    if (!modal) return;
+    const backdrop = modal.querySelector(".modal-backdrop");
+    if (!backdrop) return;
+    backdrop.addEventListener("click", () => closeAllModals());
+  });
+
+  // 被 ui.js 呼叫：開啟新增 Modal
+  window.openAddModal = function openAddModal() {
+    const form = document.getElementById("add-card-form");
+    if (form) form.reset();
+
+    // 清掉預覽 & 狀態文字
+    resetSmartAddUI();
+
+    if (addModal) addModal.classList.remove("hidden");
+    const nameEl = document.getElementById("add-name");
+    if (nameEl) nameEl.focus();
   };
-  renderList(filter);
-}
 
-async function captureAlbumSnapshot() {
-  const album = document.querySelector(".album");
-  // 只截「卡冊本體」，背景透明
-  const canvas = await html2canvas(album, { backgroundColor: null, scale: 1 });
-  return canvas.toDataURL("image/png");
-}
+  window.openCardModal = function openCardModal(cardId) {
+    const card = findCardById(cardId);
+    if (!card || !cardModal) return;
 
-let albumSnapshotCache = null;
-let snapshotBusy = false;
+    cardModal.dataset.cardId = card.id;
 
-async function warmAlbumSnapshot() {
-  if (snapshotBusy) return;
-  snapshotBusy = true;
+    const pageLabel = `第 ${card.pageIndex + 1} 頁`;
+    const slotLabel = `第 ${card.slotIndex + 1} 格`;
 
-  try {
-    const album = document.querySelector(".album");
-    // 等下一幀，確保 renderAlbum() 的 DOM 已經真的畫到螢幕上
-    await new Promise((r) => requestAnimationFrame(() => r()));
-    const canvas = await html2canvas(album, { backgroundColor: null, scale: 1 });
-    albumSnapshotCache = canvas.toDataURL("image/png");
-  } catch (e) {
-    console.warn("snapshot failed", e);
-  } finally {
-    snapshotBusy = false;
+    const imgDiv = document.getElementById("detail-image");
+    if (imgDiv) {
+      imgDiv.style.backgroundImage = card.imageUrl ? `url(${card.imageUrl})` : "";
+    }
+
+    const groupTag = document.getElementById("detail-group-tag");
+    if (groupTag) groupTag.textContent = card.group || "UNKNOWN";
+
+    const catPill = document.getElementById("detail-category-pill");
+    if (catPill) catPill.textContent = card.category || "未分類";
+
+    const favPill = document.getElementById("detail-fav-pill");
+    if (favPill) {
+      favPill.classList.toggle("is-hidden", !card.isFavorite);
+    }
+
+    const nameEl = document.getElementById("detail-name");
+    if (nameEl) nameEl.textContent = card.name;
+
+    const subEl = document.getElementById("detail-subname");
+    if (subEl) {
+      subEl.textContent = [card.group || "未設定團體", card.member || ""]
+        .filter(Boolean)
+        .join(" · ");
+    }
+
+    const noteText =
+      card.note && card.note.trim().length > 0
+        ? card.note
+        : "這張收藏目前還沒有備註，可以之後再補上～";
+    const noteEl = document.getElementById("detail-note");
+    if (noteEl) noteEl.textContent = noteText;
+
+    const seriesEl = document.getElementById("detail-series");
+    if (seriesEl) seriesEl.textContent = card.series || "—";
+
+    const dateEl = document.getElementById("detail-date");
+    if (dateEl) dateEl.textContent = card.gotDate || "—";
+
+    const pageEl = document.getElementById("detail-page");
+    if (pageEl) pageEl.textContent = pageLabel;
+
+    const slotEl = document.getElementById("detail-slot");
+    if (slotEl) slotEl.textContent = slotLabel;
+
+    const statusEl = document.getElementById("detail-status");
+    if (statusEl) {
+      statusEl.textContent = card.isFavorite ? "本命卡 · In Binder" : "一般收藏 · In Binder";
+    }
+
+    const toggleBtn = document.getElementById("toggle-favorite-btn");
+    if (toggleBtn) toggleBtn.textContent = card.isFavorite ? "取消本命標記" : "設為本命卡 💖";
+
+    cardModal.classList.remove("hidden");
+  };
+
+  // 本命切換
+  const favBtn = document.getElementById("toggle-favorite-btn");
+  if (favBtn) {
+    favBtn.addEventListener("click", () => {
+      const id = Number(cardModal?.dataset.cardId);
+      const card = findCardById(id);
+      if (!card) return;
+      card.isFavorite = !card.isFavorite;
+      saveCards();
+      renderAlbum(currentPageIndex);
+      applyListFilter();
+      renderStats();
+      openCardModal(id);
+    });
   }
-}
 
-async function bookFlip(direction, onMidFlip) {
-  const album = document.querySelector(".album");
-  const paper = document.getElementById("pageFlipPaper");
-  const shadow = document.getElementById("pageFlipShadow");
-  if (!album || !paper || !shadow) return;
+  // 刪除卡片
+  const delBtn = document.getElementById("delete-card-btn");
+  if (delBtn) {
+    delBtn.addEventListener("click", () => {
+      const id = Number(cardModal?.dataset.cardId);
+      if (!id) return;
+      if (!confirm("確定要刪除這張收藏嗎？")) return;
 
-  if (
-    album.classList.contains("is-bookflip-next") ||
-    album.classList.contains("is-bookflip-prev")
-  )
-    return;
+      cards = cards.filter((c) => c.id !== id);
+      saveCards();
+      closeAllModals();
 
-  // 1) 先用快取快照立即開始動畫
-  if (!albumSnapshotCache) {
-    await warmAlbumSnapshot();
+      const maxPage = getMaxPageIndex();
+      if (currentPageIndex > maxPage) currentPageIndex = maxPage;
+
+      renderAlbum(currentPageIndex);
+      applyListFilter();
+      renderStats();
+    });
   }
-  paper.style.backgroundImage = `url(${albumSnapshotCache})`;
 
-  const isPrev = direction === "prev";
-  paper.classList.toggle("is-prev", isPrev);
-  shadow.classList.toggle("is-prev", isPrev);
+  // ===============================
+  // 5) 新增表單提交
+  // ===============================
+  const addForm = document.getElementById("add-card-form");
+  if (addForm) {
+    addForm.addEventListener("submit", (e) => {
+      e.preventDefault();
 
-  album.classList.add(isPrev ? "is-bookflip-prev" : "is-bookflip-next");
+      const name = document.getElementById("add-name")?.value.trim();
+      if (!name) return;
 
-  // 2) 翻到一半換內容
-  setTimeout(() => {
-    onMidFlip?.();
-  }, 360);
+      const group = document.getElementById("add-group")?.value.trim() || "";
+      const member = document.getElementById("add-member")?.value.trim() || "";
+      const category = document.getElementById("add-category")?.value || "小卡";
+      const imageUrl = document.getElementById("add-image")?.value.trim() || "";
+      const gotDate = document.getElementById("add-date")?.value || "";
+      const series = document.getElementById("add-series")?.value.trim() || "";
+      const note = document.getElementById("add-note")?.value.trim() || "";
 
-  // 3) 翻完清掉狀態 + 再預先截下一張
-  setTimeout(() => {
-    album.classList.remove("is-bookflip-next", "is-bookflip-prev");
-    paper.style.backgroundImage = "";
-    warmAlbumSnapshot();
-  }, 760);
-}
+      let target;
+      if (window.pendingSlotForNewCard) {
+        target = {
+          pageIndex: pendingSlotForNewCard.pageIndex,
+          slotIndex: pendingSlotForNewCard.slotIndex
+        };
+      } else {
+        target = findFirstEmptySlot();
+      }
+      window.pendingSlotForNewCard = null;
 
-// ====== 團體/成員對照表（可自己擴充） ======
-const MEMBER_TO_GROUP = {
-  // TWICE
-  mina: "TWICE",
-  momo: "TWICE",
-  nayeon: "TWICE",
-  sana: "TWICE",
-  tzuyu: "TWICE",
-  jihyo: "TWICE",
-  dahyun: "TWICE",
-  chaeyoung: "TWICE",
-  jeongyeon: "TWICE",
-  tiffany: "TWICE", // 這行可刪（只是示例）
-
-  // MAMAMOO
-  solar: "MAMAMOO",
-  moonbyul: "MAMAMOO",
-  wheein: "MAMAMOO",
-  hwasa: "MAMAMOO",
-
-  // VIVIZ
-  eunha: "VIVIZ",
-  sinb: "VIVIZ",
-  umji: "VIVIZ"
-};
-
-// 把字串變乾淨：小寫、去副檔名、去 query
-function normalizeHint(text) {
-  return (text || "")
-    .toLowerCase()
-    .split("?")[0]
-    .split("#")[0];
-}
-
-function inferGroupMemberFromText(text) {
-  const hint = normalizeHint(text);
-  // 用「檔名/網址」包含關鍵字來猜
-  for (const memberKey of Object.keys(MEMBER_TO_GROUP)) {
-    if (hint.includes(memberKey)) {
-      return {
-        member: memberKey,
-        group: MEMBER_TO_GROUP[memberKey]
+      const newCard = {
+        id: Date.now(),
+        name,
+        group,
+        member,
+        category,
+        series,
+        gotDate,
+        note,
+        imageUrl,
+        isFavorite: false,
+        pageIndex: target.pageIndex,
+        slotIndex: target.slotIndex
       };
+
+      cards.push(newCard);
+      saveCards();
+
+      closeAllModals();
+      currentPageIndex = target.pageIndex;
+      renderAlbum(currentPageIndex);
+      applyListFilter();
+      renderStats();
+    });
+  }
+
+  // ===============================
+  // 6) List filter
+  // ===============================
+  const searchInput = document.getElementById("search-input");
+  const categoryFilter = document.getElementById("category-filter");
+  const favoriteFilter = document.getElementById("favorite-filter");
+
+  [searchInput, categoryFilter, favoriteFilter].forEach((el) => {
+    if (!el) return;
+    el.addEventListener("input", () => applyListFilter());
+  });
+
+  window.applyListFilter = function applyListFilter() {
+    const filter = {
+      keyword: searchInput?.value || "",
+      category: categoryFilter?.value || "",
+      favoriteOnly: favoriteFilter?.value === "favorite"
+    };
+    renderList(filter);
+  };
+
+  // ===============================
+  // 7) 翻頁快照與動畫
+  // ===============================
+  let albumSnapshotCache = null;
+  let snapshotBusy = false;
+
+  async function warmAlbumSnapshot() {
+    if (snapshotBusy) return;
+    snapshotBusy = true;
+
+    try {
+      const album = document.querySelector(".album");
+      if (!album) return;
+
+      await new Promise((r) => requestAnimationFrame(() => r()));
+      const canvas = await html2canvas(album, { backgroundColor: null, scale: 1 });
+      albumSnapshotCache = canvas.toDataURL("image/png");
+    } catch (e) {
+      console.warn("snapshot failed", e);
+    } finally {
+      snapshotBusy = false;
     }
   }
-  return null;
-}
 
-function titleCaseMember(memberKey) {
-  // tzuyu -> Tzuyu
-  if (!memberKey) return "";
-  return memberKey.charAt(0).toUpperCase() + memberKey.slice(1);
-}
+  async function bookFlip(direction, onMidFlip) {
+    const album = document.querySelector(".album");
+    const paper = document.getElementById("pageFlipPaper");
+    const shadow = document.getElementById("pageFlipShadow");
+    if (!album || !paper || !shadow) return;
 
-function setPreviewImage(urlOrDataUrl) {
-  const preview = document.getElementById("add-image-preview");
-  if (!preview) return;
+    if (
+      album.classList.contains("is-bookflip-next") ||
+      album.classList.contains("is-bookflip-prev")
+    ) return;
 
-  if (!urlOrDataUrl) {
-    preview.style.backgroundImage = "";
-    preview.textContent = "預覽";
-    return;
-  }
-  preview.textContent = "";
-  preview.style.backgroundImage = `url(${urlOrDataUrl})`;
-  preview.style.backgroundSize = "cover";
-  preview.style.backgroundPosition = "center";
-}
+    if (!albumSnapshotCache) await warmAlbumSnapshot();
+    paper.style.backgroundImage = albumSnapshotCache ? `url(${albumSnapshotCache})` : "";
 
-// ====== 核心：把「貼網址 / 上傳檔案」接到表單 ======
-function wireSmartAddModal() {
-  const urlInput = document.getElementById("add-image");
-  const fileInput = document.getElementById("add-image-file");
-  const nameInput = document.getElementById("add-name");
-  const groupInput = document.getElementById("add-group");
-  const memberInput = document.getElementById("add-member");
+    const isPrev = direction === "prev";
+    paper.classList.toggle("is-prev", isPrev);
+    shadow.classList.toggle("is-prev", isPrev);
 
-  // 只要有一個不存在，就代表你 HTML 的 id 對不上
-  if (!urlInput || !fileInput || !nameInput || !groupInput || !memberInput) {
-    console.warn("[smart-add] Missing elements. Check your input IDs.");
-    return;
+    album.classList.add(isPrev ? "is-bookflip-prev" : "is-bookflip-next");
+
+    setTimeout(() => onMidFlip?.(), 360);
+
+    setTimeout(() => {
+      album.classList.remove("is-bookflip-next", "is-bookflip-prev");
+      paper.style.backgroundImage = "";
+      warmAlbumSnapshot();
+    }, 760);
   }
 
-  // 1) 貼網址 → 預覽 + 自動填入
-  urlInput.addEventListener("input", () => {
-    const url = urlInput.value.trim();
-    if (!url) {
-      setPreviewImage("");
+  // ===============================
+  // 8) Smart Add：圖片 → 推論團體/成員 + 預覽（唯一版本）
+  // ===============================
+  const MEMBER_TO_GROUP = {
+    // TWICE
+    mina: "TWICE",
+    momo: "TWICE",
+    nayeon: "TWICE",
+    sana: "TWICE",
+    tzuyu: "TWICE",
+    jihyo: "TWICE",
+    dahyun: "TWICE",
+    chaeyoung: "TWICE",
+    jeongyeon: "TWICE",
+
+    // MAMAMOO
+    solar: "MAMAMOO",
+    moonbyul: "MAMAMOO",
+    wheein: "MAMAMOO",
+    hwasa: "MAMAMOO",
+
+    // VIVIZ
+    eunha: "VIVIZ",
+    sinb: "VIVIZ",
+    umji: "VIVIZ"
+  };
+
+  function normalizeHint(text) {
+    return (text || "").toLowerCase().split("?")[0].split("#")[0];
+  }
+
+  function inferGroupMemberFromText(text) {
+    const hint = normalizeHint(text);
+    for (const memberKey of Object.keys(MEMBER_TO_GROUP)) {
+      if (hint.includes(memberKey)) {
+        return { member: memberKey, group: MEMBER_TO_GROUP[memberKey] };
+      }
+    }
+    return null;
+  }
+
+  function titleCaseMember(memberKey) {
+    if (!memberKey) return "";
+    return memberKey.charAt(0).toUpperCase() + memberKey.slice(1);
+  }
+
+  function setPreviewImage(urlOrDataUrl) {
+    const preview = document.getElementById("add-image-preview");
+    if (!preview) return;
+
+    if (!urlOrDataUrl) {
+      preview.classList.remove("has-img");
+      preview.style.backgroundImage = "";
+      preview.textContent = "預覽";
       return;
     }
 
-    setPreviewImage(url); // ⚠️ 有些網站會擋外連圖，擋了就預覽不到（正常）
-    const guessed = inferGroupMemberFromText(url);
-    if (guessed) {
-      groupInput.value = guessed.group;
-      memberInput.value = titleCaseMember(guessed.member);
-      if (!nameInput.value.trim()) nameInput.value = `${titleCaseMember(guessed.member)} 小卡`;
+    preview.textContent = "";
+    preview.classList.add("has-img");
+    preview.style.backgroundImage = `url(${urlOrDataUrl})`;
+    preview.style.backgroundSize = "cover";
+    preview.style.backgroundPosition = "center";
+  }
+
+  function setSmartStatus(type, msg) {
+    const el = document.getElementById("smart-status");
+    if (!el) return;
+    el.className = "smart-status" + (type ? ` ${type}` : "");
+    el.textContent = msg;
+  }
+
+  function resetSmartAddUI() {
+    setPreviewImage("");
+    setSmartStatus("", "貼上圖片後會自動填入「團體 / 成員」，你只要確認就好");
+  }
+
+  function wireSmartAddModal() {
+    const urlInput = document.getElementById("add-image");
+    const fileInput = document.getElementById("add-image-file");
+    const nameInput = document.getElementById("add-name");
+    const groupInput = document.getElementById("add-group");
+    const memberInput = document.getElementById("add-member");
+    const catSelect = document.getElementById("add-category");
+
+    if (!urlInput || !fileInput || !nameInput || !groupInput || !memberInput) {
+      console.warn("[smart-add] Missing elements. Check IDs: add-image/add-image-file/add-name/add-group/add-member");
+      return;
     }
-  });
 
-  // 2) 上傳檔案 → 讀檔預覽 + 自動填入（用檔名）
-  fileInput.addEventListener("change", () => {
-    const file = fileInput.files && fileInput.files[0];
-    if (!file) return;
+    // 1) 貼網址：嘗試預覽 + 用網址關鍵字猜
+    urlInput.addEventListener("input", () => {
+      const url = urlInput.value.trim();
+      if (!url) {
+        resetSmartAddUI();
+        return;
+      }
 
-    // 用檔名猜
-    const guessed = inferGroupMemberFromText(file.name);
-    if (guessed) {
-      groupInput.value = guessed.group;
-      memberInput.value = titleCaseMember(guessed.member);
-      if (!nameInput.value.trim()) nameInput.value = `${titleCaseMember(guessed.member)} 小卡`;
-    }
+      // 外部網址可能防盜連，預覽不一定會出（正常）
+      setPreviewImage(url);
 
-    // 讀成 base64 → 立刻可預覽，也能存進 localStorage
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      setPreviewImage(dataUrl);
+      const guessed = inferGroupMemberFromText(url);
+      if (guessed) {
+        groupInput.value = guessed.group;
+        memberInput.value = titleCaseMember(guessed.member);
+        if (!nameInput.value.trim()) {
+          const cat = catSelect?.value || "小卡";
+          nameInput.value = `${titleCaseMember(guessed.member)} ${cat}`;
+        }
+        setSmartStatus("ok", `已自動判斷：${guessed.group} · ${titleCaseMember(guessed.member)}（可直接加入或修改）`);
+      } else {
+        setSmartStatus("warn", "圖片已填入，但網址沒有關鍵字可判斷（可改用上傳檔案或手動填）");
+      }
+    });
 
-      // 重要：把圖片塞回 add-image，讓你「送出新增」時會存進 imageUrl
-      // 這樣回到內容頁圖片才不會不見
-      urlInput.value = dataUrl;
-    };
-    reader.readAsDataURL(file);
-  });
-}
+    // 2) 上傳檔案：一定能預覽 + 用檔名關鍵字猜（tzuyu.jpg 最穩）
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
 
-// 初始化
-loadCards();
-renderAlbum(currentPageIndex);
-applyListFilter();
-renderStats();
-wireSmartAddModal();
+      const guessed = inferGroupMemberFromText(file.name);
+      if (guessed) {
+        groupInput.value = guessed.group;
+        memberInput.value = titleCaseMember(guessed.member);
+        if (!nameInput.value.trim()) {
+          const cat = catSelect?.value || "小卡";
+          nameInput.value = `${titleCaseMember(guessed.member)} ${cat}`;
+        }
+        setSmartStatus("ok", `已從檔名判斷：${guessed.group} · ${titleCaseMember(guessed.member)}（可直接加入或修改）`);
+      } else {
+        setSmartStatus("warn", "已上傳圖片，但檔名沒有關鍵字可判斷（可手動填）");
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result;
+        setPreviewImage(dataUrl);
+        // 讓「新增送出」直接保存這張圖（回到內容頁也不會不見）
+        urlInput.value = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ===============================
+  // 9) 初始化（最底下只做一次）
+  // ===============================
+  loadCards();
+  renderAlbum(currentPageIndex);
+  applyListFilter();
+  renderStats();
+  wireSmartAddModal();
+
+  // 如果一開始不是在 #album，就顯示封面
+  if (location.hash !== "#album") showCover();
+});
