@@ -209,6 +209,13 @@
         <div class="full-row">
           <label class="label-title">圖片網址（貼上後自動判斷團體/成員）</label>
           <input type="text" id="add-image" placeholder="例如：img/mina.jpg 或 https://..." />
+          <div style="margin-top:10px;">
+            <label class="label-title">或直接上傳圖片（僅本機預覽）</label>
+            <input type="file" id="add-image-file" accept="image/*" />
+            <div style="font-size:12px; opacity:0.7; margin-top:4px;">
+              ※ GitHub Pages 為靜態網站，這裡上傳只會做預覽；要永久保存需改成後端或用雲端圖床。
+            </div>
+          </div>
           <div class="smart-row">
             <div id="add-image-preview" class="image-preview is-empty">預覽</div>
 

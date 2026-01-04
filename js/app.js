@@ -170,6 +170,8 @@ function wireSmartAddModal() {
   const previewEl = document.getElementById("add-image-preview");
   const toggleBtn = document.getElementById("toggle-advanced");
   const advArea = document.getElementById("advanced-area");
+  const fileInput = document.getElementById("add-image-file");
+
 
   if (!imageInput || !statusEl || !previewEl) return;
 
@@ -219,6 +221,26 @@ function wireSmartAddModal() {
       statusEl.className = "smart-status";
       statusEl.textContent = "貼上圖片後會自動填入「團體 / 成員」，你只要確認就好";
     }
+
+    // 上傳圖片 → 轉成 DataURL → 當成 imageUrl 使用（可預覽、可存）
+    if (fileInput) {
+      fileInput.addEventListener("change", async () => {
+        const file = fileInput.files?.[0];
+        if (!file) return;
+
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        // 填入 add-image，沿用你原本的流程
+        imageInput.value = dataUrl;
+        await runInfer();
+      });
+    }
+
   }
 
   // 貼上/輸入後推論
