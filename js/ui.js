@@ -1,9 +1,12 @@
 // js/ui.js
+// ===============================
+// UI Render: Album / List / Stats / Achievements + Toast
+// ===============================
 
-// Album 渲染
+// ===== Album 渲染 =====
 function getMaxPageIndex() {
-  if (cards.length === 0) return 0;
-  return cards.reduce((max, c) => Math.max(max, c.pageIndex), 0);
+  if (!cards || cards.length === 0) return 0;
+  return cards.reduce((max, c) => Math.max(max, c.pageIndex || 0), 0);
 }
 
 // 小工具：假裝有愛心數
@@ -16,17 +19,23 @@ function formatLikes(num) {
 
 function renderAlbum(currentPageIndex) {
   const albumGrid = document.getElementById("album-grid");
+  if (!albumGrid) return;
+
   albumGrid.innerHTML = "";
 
   const currentPageSpan = document.getElementById("current-page");
-  currentPageSpan.textContent = currentPageIndex + 1;
+  if (currentPageSpan) currentPageSpan.textContent = (currentPageIndex || 0) + 1;
 
   const prevBtn = document.getElementById("prev-page");
   const nextBtn = document.getElementById("next-page");
-  prevBtn.disabled = false;
-  nextBtn.disabled = false;
-  prevBtn.classList.remove("btn-disabled");
-  nextBtn.classList.remove("btn-disabled");
+  if (prevBtn) {
+    prevBtn.disabled = false;
+    prevBtn.classList.remove("btn-disabled");
+  }
+  if (nextBtn) {
+    nextBtn.disabled = false;
+    nextBtn.classList.remove("btn-disabled");
+  }
 
   for (let slotIndex = 0; slotIndex < SLOTS_PER_PAGE; slotIndex++) {
     const slot = document.createElement("div");
@@ -44,7 +53,7 @@ function renderAlbum(currentPageIndex) {
       // 右上角 group 角標
       const corner = document.createElement("div");
       corner.className = "slot-corner-label";
-      corner.textContent = card.group || "TWICE";
+      corner.textContent = card.group || "未設定";
       cardDiv.appendChild(corner);
 
       // 照片
@@ -65,17 +74,19 @@ function renderAlbum(currentPageIndex) {
 
       const nameEl = document.createElement("div");
       nameEl.className = "slot-name";
-      nameEl.textContent = card.name;
+      nameEl.textContent = card.name || "未命名";
 
       const likeEl = document.createElement("div");
       likeEl.className = "slot-like";
+
       const heartSpan = document.createElement("span");
       heartSpan.className = "slot-like-heart";
       heartSpan.textContent = "♡";
+
       const likeNum = document.createElement("span");
-      // 假造一個愛心數，讓畫面有數字感覺
-      const fakeLikes = 800 + (card.id % 2500);
+      const fakeLikes = 800 + ((card.id || 0) % 2500);
       likeNum.textContent = formatLikes(fakeLikes);
+
       likeEl.appendChild(heartSpan);
       likeEl.appendChild(likeNum);
 
@@ -85,25 +96,20 @@ function renderAlbum(currentPageIndex) {
       // 副標：GROUP · MEMBER
       const subEl = document.createElement("div");
       subEl.className = "slot-sub";
-      subEl.textContent = [
-        card.group || "未設定團體",
-        card.member || ""
-      ]
+      subEl.textContent = [card.group || "未設定團體", card.member || ""]
         .filter(Boolean)
         .join(" · ");
 
-      // Tag 列：兩個小 pill
+      // Tag 列
       const tagsRow = document.createElement("div");
       tagsRow.className = "slot-tags-row";
 
       const tag1 = document.createElement("span");
       tag1.className = "slot-tag-pill";
-      // 例如 Cheer Up / 專輯名，暫時用 series
       tag1.textContent = card.series || card.category || "Collection";
 
       const tag2 = document.createElement("span");
       tag2.className = "slot-tag-pill";
-      // 用類別當第二個標籤：小卡 / 專輯 / 周邊…
       tag2.textContent = card.category || "Card";
 
       tagsRow.appendChild(tag1);
@@ -121,10 +127,7 @@ function renderAlbum(currentPageIndex) {
       // 空插槽：點擊新增
       slot.className = "album-slot empty";
       slot.addEventListener("click", () => {
-        pendingSlotForNewCard = {
-          pageIndex: currentPageIndex,
-          slotIndex
-        };
+        pendingSlotForNewCard = { pageIndex: currentPageIndex, slotIndex };
         openAddModal();
       });
     }
@@ -133,14 +136,21 @@ function renderAlbum(currentPageIndex) {
   }
 }
 
-// List 渲染
+// ===== List 渲染（含排序） =====
 function renderList(filter) {
   const listGrid = document.getElementById("list-grid");
+  if (!listGrid) return;
+
   listGrid.innerHTML = "";
 
-  const { keyword, category, favoriteOnly, sortKey = "newest" } = filter;
+  const {
+    keyword = "",
+    category = "",
+    favoriteOnly = false,
+    sortKey = "newest"
+  } = filter || {};
 
-  const keywordLower = keyword.trim().toLowerCase();
+  const keywordLower = (keyword || "").trim().toLowerCase();
 
   const filtered = cards.filter((c) => {
     if (category && c.category !== category) return false;
@@ -159,10 +169,9 @@ function renderList(filter) {
     return combined.toLowerCase().includes(keywordLower);
   });
 
-  // ✅ 排序工具
+  // 排序工具
   const safeStr = (v) => (v || "").toString().toLowerCase();
   const toTime = (dateStr) => {
-    // dateStr like "2024-05-01" or ""
     const t = Date.parse(dateStr);
     return Number.isFinite(t) ? t : -Infinity;
   };
@@ -173,7 +182,6 @@ function renderList(filter) {
         return (a.id || 0) - (b.id || 0);
 
       case "fav_newest": {
-        // 本命先，再最新
         const favDiff = (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0);
         if (favDiff !== 0) return favDiff;
         return (b.id || 0) - (a.id || 0);
@@ -188,13 +196,15 @@ function renderList(filter) {
       }
 
       case "category": {
-        const c = safeStr(a.category).localeCompare(safeStr(b.category), "zh-Hant");
+        const c = safeStr(a.category).localeCompare(
+          safeStr(b.category),
+          "zh-Hant"
+        );
         if (c !== 0) return c;
         return safeStr(a.name).localeCompare(safeStr(b.name), "zh-Hant");
       }
 
       case "gotDate_newest": {
-        // 有日期的先排，日期新到舊；沒日期的放後面
         const ta = toTime(a.gotDate);
         const tb = toTime(b.gotDate);
         if (ta === tb) return (b.id || 0) - (a.id || 0);
@@ -207,7 +217,6 @@ function renderList(filter) {
     }
   });
 
-  // ✅ 用 sorted 渲染
   sorted.forEach((card) => {
     const div = document.createElement("div");
     div.className = "card";
@@ -215,7 +224,7 @@ function renderList(filter) {
     const header = document.createElement("div");
     header.className = "card-header";
     header.innerHTML = `
-      <div class="card-title">${card.name}</div>
+      <div class="card-title">${card.name || "未命名"}</div>
       <div class="card-pill">${card.category || "未分類"}</div>
     `;
 
@@ -254,44 +263,93 @@ function renderList(filter) {
   });
 }
 
-// Stats 渲染
-function renderStats() {
-  const total = cards.length;
-  const summaryDiv = document.getElementById("stats-summary");
-  summaryDiv.innerHTML =
-    total === 0
-      ? "目前還沒有任何收藏，可以到「收藏冊」點空插槽新增 ✨"
-      : `目前共收藏 <strong>${total}</strong> 項，包含本命卡 <strong>${
-          cards.filter((c) => c.isFavorite).length
-        }</strong> 張。`;
+// ===============================
+// Toast + 成就解鎖記錄（只留一份！）
+// ===============================
+const ACH_STORAGE_KEY = "achievements_unlocked_v1";
 
-  const groupCounts = {};
-  const categoryCounts = {};
-  cards.forEach((c) => {
-    const g = c.group || "未設定團體";
-    groupCounts[g] = (groupCounts[g] || 0) + 1;
-
-    const cat = c.category || "未分類";
-    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
-  });
-
-  renderBars("stats-by-group", groupCounts);
-  renderBars("stats-by-category", categoryCounts);
-
-  renderAchievements();
+function getUnlockedSet() {
+  try {
+    const raw = localStorage.getItem(ACH_STORAGE_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
 }
 
+function saveUnlockedSet(set) {
+  localStorage.setItem(ACH_STORAGE_KEY, JSON.stringify([...set]));
+}
+
+function ensureToastContainer() {
+  let el = document.getElementById("toast-container");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "toast-container";
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
+// 讓 Toast 排隊，不會一次疊到爆
+let toastChain = Promise.resolve();
+
+function showToast(message, opts = {}) {
+  const { icon = "🎉", duration = 1800 } = opts;
+
+  toastChain = toastChain.then(
+    () =>
+      new Promise((resolve) => {
+        const container = ensureToastContainer();
+
+        const toast = document.createElement("div");
+        toast.className = "toast";
+        toast.innerHTML = `
+          <div class="toast-icon">${icon}</div>
+          <div class="toast-text">${message}</div>
+        `;
+
+        container.appendChild(toast);
+
+        requestAnimationFrame(() => toast.classList.add("show"));
+
+        setTimeout(() => {
+          toast.classList.remove("show");
+          toast.classList.add("hide");
+          setTimeout(() => {
+            toast.remove();
+            resolve();
+          }, 260);
+        }, duration);
+      })
+  );
+}
+
+// 統一團體大小寫避免重複統計
+function normalizeGroupName(group) {
+  const g = (group || "").trim();
+  if (!g) return "未設定團體";
+  return g.toUpperCase();
+}
+
+// ===== Stats 渲染 =====
 function renderBars(containerId, countsObj) {
   const container = document.getElementById(containerId);
+  if (!container) return;
+
   container.innerHTML = "";
 
-  const entries = Object.entries(countsObj);
+  const entries = Object.entries(countsObj || {});
   if (entries.length === 0) {
     container.textContent = "暫無資料";
     return;
   }
 
-  const maxValue = Math.max(...entries.map(([, v]) => v));
+  // 由大到小顯示比較直覺
+  entries.sort((a, b) => (b[1] || 0) - (a[1] || 0));
+
+  const maxValue = Math.max(...entries.map(([, v]) => v || 0), 1);
 
   entries.forEach(([label, value]) => {
     const row = document.createElement("div");
@@ -306,7 +364,7 @@ function renderBars(containerId, countsObj) {
 
     const fill = document.createElement("div");
     fill.className = "stats-bar-fill";
-    fill.style.width = `${(value / maxValue) * 100}%`;
+    fill.style.width = `${((value || 0) / maxValue) * 100}%`;
 
     track.appendChild(fill);
 
@@ -322,41 +380,98 @@ function renderBars(containerId, countsObj) {
   });
 }
 
-// 成就：超簡單規則示意
+function renderStats() {
+  const summaryEl = document.getElementById("stats-summary");
+  const total = cards.length;
+  const favCount = cards.filter((c) => c.isFavorite).length;
+
+  if (summaryEl) {
+    summaryEl.innerHTML = `目前共收藏 <b style="color:#e11d48">${total}</b> 項，包含本命卡 <b style="color:#e11d48">${favCount}</b> 張。`;
+  }
+
+  // by group（統一大小寫）
+  const byGroup = {};
+  cards.forEach((c) => {
+    const g = normalizeGroupName(c.group);
+    byGroup[g] = (byGroup[g] || 0) + 1;
+  });
+
+  // by category
+  const byCategory = {};
+  cards.forEach((c) => {
+    const cat = (c.category || "未分類").trim();
+    byCategory[cat] = (byCategory[cat] || 0) + 1;
+  });
+
+  renderBars("stats-by-group", byGroup);
+  renderBars("stats-by-category", byCategory);
+
+  // 成就（含 Toast）
+  renderAchievements();
+}
+
+// ===== 成就（含 Toast 提醒）=====
 function renderAchievements() {
   const container = document.getElementById("achievement-list");
+  if (!container) return;
+
   container.innerHTML = "";
 
   const total = cards.length;
   const favCount = cards.filter((c) => c.isFavorite).length;
+
+  const unlockedSet = getUnlockedSet();
 
   const defs = [
     {
       id: "first-card",
       label: "第一張收藏",
       desc: "新增第一筆收藏。",
-      unlocked: total >= 1
+      unlockedNow: total >= 1
     },
     {
       id: "ten-cards",
       label: "收藏 10+",
       desc: "收藏數達到 10 張。",
-      unlocked: total >= 10
+      unlockedNow: total >= 10
     },
     {
-      id: "favorite-master",
+      id: "fav-master",
       label: "本命達人",
       desc: "本命卡數量 ≥ 3。",
-      unlocked: favCount >= 3
+      unlockedNow: favCount >= 3
     }
   ];
 
+  const newlyUnlocked = defs.filter((a) => a.unlockedNow && !unlockedSet.has(a.id));
+
+  if (newlyUnlocked.length > 0) {
+    newlyUnlocked.forEach((a) => unlockedSet.add(a.id));
+    saveUnlockedSet(unlockedSet);
+
+    newlyUnlocked.forEach((a) => {
+      showToast(`解鎖成就：${a.label}`, { icon: "🏅", duration: 1800 });
+    });
+  }
+
   defs.forEach((a) => {
+    const isUnlocked = unlockedSet.has(a.id) || a.unlockedNow;
+    const isJustUnlocked = newlyUnlocked.some((x) => x.id === a.id);
+
     const div = document.createElement("div");
-    div.className = "achievement" + (a.unlocked ? " unlocked" : "");
-    div.innerHTML = `<span>${
-      a.unlocked ? "🏅" : "🔒"
-    }</span><div><div>${a.label}</div><div style="opacity:.7;">${a.desc}</div></div>`;
+    div.className =
+      "achievement" +
+      (isUnlocked ? " unlocked" : "") +
+      (isJustUnlocked ? " just-unlocked" : "");
+
+    div.innerHTML = `
+      <span>${isUnlocked ? "🏅" : "🔒"}</span>
+      <div>
+        <div>${a.label}</div>
+        <div style="opacity:.7;">${a.desc}</div>
+      </div>
+    `;
+
     container.appendChild(div);
   });
 }
