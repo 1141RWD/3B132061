@@ -499,24 +499,23 @@ document.addEventListener("DOMContentLoaded", () => {
       const file = fileInput.files && fileInput.files[0];
       if (!file) return;
 
+      // 用檔名推論團體/成員（例如 tzuyu.jpg）
       const guessed = inferGroupMemberFromText(file.name);
       if (guessed) {
         groupInput.value = guessed.group;
         memberInput.value = titleCaseMember(guessed.member);
-        if (!nameInput.value.trim()) {
-          const cat = catSelect?.value || "小卡";
-          nameInput.value = `${titleCaseMember(guessed.member)} ${cat}`;
-        }
-        setSmartStatus("ok", `已從檔名判斷：${guessed.group} · ${titleCaseMember(guessed.member)}（可直接加入或修改）`);
-      } else {
-        setSmartStatus("warn", "已上傳圖片，但檔名沒有關鍵字可判斷（可手動填）");
+        if (!nameInput.value.trim()) nameInput.value = `${titleCaseMember(guessed.member)} 小卡`;
       }
 
       const reader = new FileReader();
       reader.onload = () => {
         const dataUrl = reader.result;
+
+        // ✅ 預覽
         setPreviewImage(dataUrl);
-        // 讓「新增送出」直接保存這張圖（回到內容頁也不會不見）
+
+        // ✅ 關鍵：把 dataUrl 塞回 add-image
+        // 這樣 submit 時 imageUrl 才會真的被存進 cards/localStorage
         urlInput.value = dataUrl;
       };
       reader.readAsDataURL(file);
