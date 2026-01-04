@@ -309,20 +309,23 @@ document.addEventListener("DOMContentLoaded", () => {
   const searchInput = document.getElementById("search-input");
   const categoryFilter = document.getElementById("category-filter");
   const favoriteFilter = document.getElementById("favorite-filter");
+  const sortSelect = document.getElementById("sort-select");
 
-  [searchInput, categoryFilter, favoriteFilter].forEach((el) => {
+  [searchInput, categoryFilter, favoriteFilter, sortSelect].forEach((el) => {
     if (!el) return;
     el.addEventListener("input", () => applyListFilter());
+    el.addEventListener("change", () => applyListFilter());
   });
 
-  window.applyListFilter = function applyListFilter() {
+  function applyListFilter() {
     const filter = {
       keyword: searchInput?.value || "",
       category: categoryFilter?.value || "",
-      favoriteOnly: favoriteFilter?.value === "favorite"
+      favoriteOnly: favoriteFilter?.value === "favorite",
+      sortKey: sortSelect?.value || "newest" // ✅ 新增
     };
     renderList(filter);
-  };
+  }
 
   // ===============================
   // 7) 翻頁快照與動畫

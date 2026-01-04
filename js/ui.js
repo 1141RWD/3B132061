@@ -138,7 +138,7 @@ function renderList(filter) {
   const listGrid = document.getElementById("list-grid");
   listGrid.innerHTML = "";
 
-  const { keyword, category, favoriteOnly } = filter;
+  const { keyword, category, favoriteOnly, sortKey = "newest" } = filter;
 
   const keywordLower = keyword.trim().toLowerCase();
 
@@ -159,42 +159,80 @@ function renderList(filter) {
     return combined.toLowerCase().includes(keywordLower);
   });
 
-  filtered.forEach((card) => {
+  // ✅ 排序工具
+  const safeStr = (v) => (v || "").toString().toLowerCase();
+  const toTime = (dateStr) => {
+    // dateStr like "2024-05-01" or ""
+    const t = Date.parse(dateStr);
+    return Number.isFinite(t) ? t : -Infinity;
+  };
+
+  const sorted = [...filtered].sort((a, b) => {
+    switch (sortKey) {
+      case "oldest":
+        return (a.id || 0) - (b.id || 0);
+
+      case "fav_newest": {
+        // 本命先，再最新
+        const favDiff = (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0);
+        if (favDiff !== 0) return favDiff;
+        return (b.id || 0) - (a.id || 0);
+      }
+
+      case "group_member": {
+        const g = safeStr(a.group).localeCompare(safeStr(b.group), "zh-Hant");
+        if (g !== 0) return g;
+        const m = safeStr(a.member).localeCompare(safeStr(b.member), "zh-Hant");
+        if (m !== 0) return m;
+        return safeStr(a.name).localeCompare(safeStr(b.name), "zh-Hant");
+      }
+
+      case "category": {
+        const c = safeStr(a.category).localeCompare(safeStr(b.category), "zh-Hant");
+        if (c !== 0) return c;
+        return safeStr(a.name).localeCompare(safeStr(b.name), "zh-Hant");
+      }
+
+      case "gotDate_newest": {
+        // 有日期的先排，日期新到舊；沒日期的放後面
+        const ta = toTime(a.gotDate);
+        const tb = toTime(b.gotDate);
+        if (ta === tb) return (b.id || 0) - (a.id || 0);
+        return tb - ta;
+      }
+
+      case "newest":
+      default:
+        return (b.id || 0) - (a.id || 0);
+    }
+  });
+
+  // ✅ 用 sorted 渲染
+  sorted.forEach((card) => {
     const div = document.createElement("div");
     div.className = "card";
 
     const header = document.createElement("div");
     header.className = "card-header";
-
-    const title = document.createElement("div");
-    title.className = "card-title";
-    title.textContent = card.name;
-
-    const badge = document.createElement("div");
-    badge.className = "card-badge";
-    badge.textContent = card.category || "未分類";
-
-    header.appendChild(title);
-    header.appendChild(badge);
+    header.innerHTML = `
+      <div class="card-title">${card.name}</div>
+      <div class="card-pill">${card.category || "未分類"}</div>
+    `;
 
     const sub = document.createElement("div");
     sub.className = "card-sub";
-    sub.textContent = `${card.group || "未設定團體"}${
-      card.member ? " · " + card.member : ""
-    }`;
+    sub.textContent = [card.group, card.member].filter(Boolean).join(" · ");
 
     const metaLine = document.createElement("div");
-    metaLine.className = "card-meta-line";
-    metaLine.textContent = card.gotDate
-      ? `獲得日期：${card.gotDate}`
-      : "獲得日期：未填寫";
+    metaLine.className = "card-meta";
+    metaLine.textContent = `獲得日期：${card.gotDate || "未填寫"}`;
 
     const tags = document.createElement("div");
-    tags.className = "card-tags";
+    tags.className = "tag-row";
 
     if (card.isFavorite) {
       const t = document.createElement("span");
-      t.className = "tag favorite";
+      t.className = "tag fav";
       t.textContent = "本命卡";
       tags.appendChild(t);
     }
@@ -209,12 +247,9 @@ function renderList(filter) {
     div.appendChild(header);
     div.appendChild(sub);
     div.appendChild(metaLine);
-    if (tags.children.length > 0) {
-      div.appendChild(tags);
-    }
+    if (tags.children.length > 0) div.appendChild(tags);
 
     div.addEventListener("click", () => openCardModal(card.id));
-
     listGrid.appendChild(div);
   });
 }
