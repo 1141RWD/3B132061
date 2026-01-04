@@ -204,18 +204,21 @@
     <div class="modal-content">
       <button class="modal-close" data-close-modal>&times;</button>
       <h3>新增收藏</h3>
+
       <form id="add-card-form" class="form-grid smart-add">
-        <!-- 圖片：優先，貼了就幫你判斷 -->
+        <!-- 圖片：貼網址 or 上傳 -->
         <div class="full-row">
           <label class="label-title">圖片網址（貼上後自動判斷團體/成員）</label>
-          <input type="text" id="add-image" placeholder="例如：img/mina.jpg 或 https://..." />
+          <input type="text" id="add-image" placeholder="例如：img/tzuyu.jpg 或 https://..." />
+
           <div style="margin-top:10px;">
-            <label class="label-title">或直接上傳圖片（僅本機預覽）</label>
+            <label class="label-title">或直接上傳圖片（本機預覽 + 會存進瀏覽器）</label>
             <input type="file" id="add-image-file" accept="image/*" />
             <div style="font-size:12px; opacity:0.7; margin-top:4px;">
-              ※ GitHub Pages 為靜態網站，這裡上傳只會做預覽；要永久保存需改成後端或用雲端圖床。
+              ※ GitHub Pages 為靜態網站：上傳檔案不會真的傳到伺服器，但我們會把圖片轉成 DataURL 存進 localStorage，所以回內容頁也不會不見。
             </div>
           </div>
+
           <div class="smart-row">
             <div id="add-image-preview" class="image-preview is-empty">預覽</div>
 
@@ -241,20 +244,13 @@
           </div>
         </div>
 
-        <!-- 名稱：必填，但可以自動幫你帶入 -->
+        <!-- 名稱：必填，但會自動帶入 -->
         <label class="full-row">
-          圖片網址（貼上後自動判斷團體/成員）
-          <input type="text" id="add-image" placeholder="例如：img/tzuyu.jpg 或 https://..." />
+          名稱（可自動帶入）
+          <input type="text" id="add-name" placeholder="例如：Tzuyu 小卡" />
         </label>
 
-        <label class="full-row">
-          或直接上傳圖片（僅本機預覽 / 也可存進瀏覽器）
-          <input type="file" id="add-image-file" accept="image/*" />
-        </label>
-
-        <div id="add-image-preview" class="add-image-preview">預覽</div>
-
-        <!-- 自動判斷：預設先鎖起來讓人覺得很聰明（但可以改） -->
+        <!-- 自動判斷：團體/成員 -->
         <div class="two-col">
           <label>
             團體（自動判斷，可修改）
@@ -262,31 +258,28 @@
           </label>
           <label>
             成員（自動判斷，可修改）
-            <input type="text" id="add-member" placeholder="例如：Mina" />
+            <input type="text" id="add-member" placeholder="例如：Tzuyu" />
           </label>
         </div>
 
-        <!-- 備註：留下來，符合你想要使用者只填備註 -->
+        <!-- 備註 -->
         <label class="full-row">
           備註（選填）
           <textarea id="add-note" rows="3" placeholder="例如：在哪裡抽到、跟誰換到、想記錄什麼"></textarea>
         </label>
 
-        <!-- 進階欄位：先收起來（你原本的日期/系列先不放，真的要再加回來） -->
+        <!-- 進階欄位 -->
         <div id="advanced-area" class="advanced-area hidden">
           <div class="advanced-hint">進階資訊（可不填）</div>
 
-          <!-- 你如果未來要加回獲得日期 / 系列版本，就放這裡 -->
-          <!--
           <label>
             獲得日期
             <input type="date" id="add-date" />
           </label>
           <label>
             系列 / 版本
-            <input type="text" id="add-series" />
+            <input type="text" id="add-series" placeholder="例如：Fancy You ver.A" />
           </label>
-          -->
         </div>
 
         <div class="form-actions full-row">
