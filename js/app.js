@@ -569,8 +569,136 @@ async function bookFlip(direction, onMidFlip) {
   }, 760);
 }
 
+// ====== 團體/成員對照表（可自己擴充） ======
+const MEMBER_TO_GROUP = {
+  // TWICE
+  mina: "TWICE",
+  momo: "TWICE",
+  nayeon: "TWICE",
+  sana: "TWICE",
+  tzuyu: "TWICE",
+  jihyo: "TWICE",
+  dahyun: "TWICE",
+  chaeyoung: "TWICE",
+  jeongyeon: "TWICE",
+  tiffany: "TWICE", // 這行可刪（只是示例）
+
+  // MAMAMOO
+  solar: "MAMAMOO",
+  moonbyul: "MAMAMOO",
+  wheein: "MAMAMOO",
+  hwasa: "MAMAMOO",
+
+  // VIVIZ
+  eunha: "VIVIZ",
+  sinb: "VIVIZ",
+  umji: "VIVIZ"
+};
+
+// 把字串變乾淨：小寫、去副檔名、去 query
+function normalizeHint(text) {
+  return (text || "")
+    .toLowerCase()
+    .split("?")[0]
+    .split("#")[0];
+}
+
+function inferGroupMemberFromText(text) {
+  const hint = normalizeHint(text);
+  // 用「檔名/網址」包含關鍵字來猜
+  for (const memberKey of Object.keys(MEMBER_TO_GROUP)) {
+    if (hint.includes(memberKey)) {
+      return {
+        member: memberKey,
+        group: MEMBER_TO_GROUP[memberKey]
+      };
+    }
+  }
+  return null;
+}
+
+function titleCaseMember(memberKey) {
+  // tzuyu -> Tzuyu
+  if (!memberKey) return "";
+  return memberKey.charAt(0).toUpperCase() + memberKey.slice(1);
+}
+
+function setPreviewImage(urlOrDataUrl) {
+  const preview = document.getElementById("add-image-preview");
+  if (!preview) return;
+
+  if (!urlOrDataUrl) {
+    preview.style.backgroundImage = "";
+    preview.textContent = "預覽";
+    return;
+  }
+  preview.textContent = "";
+  preview.style.backgroundImage = `url(${urlOrDataUrl})`;
+  preview.style.backgroundSize = "cover";
+  preview.style.backgroundPosition = "center";
+}
+
+// ====== 核心：把「貼網址 / 上傳檔案」接到表單 ======
+function wireSmartAddModal() {
+  const urlInput = document.getElementById("add-image");
+  const fileInput = document.getElementById("add-image-file");
+  const nameInput = document.getElementById("add-name");
+  const groupInput = document.getElementById("add-group");
+  const memberInput = document.getElementById("add-member");
+
+  // 只要有一個不存在，就代表你 HTML 的 id 對不上
+  if (!urlInput || !fileInput || !nameInput || !groupInput || !memberInput) {
+    console.warn("[smart-add] Missing elements. Check your input IDs.");
+    return;
+  }
+
+  // 1) 貼網址 → 預覽 + 自動填入
+  urlInput.addEventListener("input", () => {
+    const url = urlInput.value.trim();
+    if (!url) {
+      setPreviewImage("");
+      return;
+    }
+
+    setPreviewImage(url); // ⚠️ 有些網站會擋外連圖，擋了就預覽不到（正常）
+    const guessed = inferGroupMemberFromText(url);
+    if (guessed) {
+      groupInput.value = guessed.group;
+      memberInput.value = titleCaseMember(guessed.member);
+      if (!nameInput.value.trim()) nameInput.value = `${titleCaseMember(guessed.member)} 小卡`;
+    }
+  });
+
+  // 2) 上傳檔案 → 讀檔預覽 + 自動填入（用檔名）
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+
+    // 用檔名猜
+    const guessed = inferGroupMemberFromText(file.name);
+    if (guessed) {
+      groupInput.value = guessed.group;
+      memberInput.value = titleCaseMember(guessed.member);
+      if (!nameInput.value.trim()) nameInput.value = `${titleCaseMember(guessed.member)} 小卡`;
+    }
+
+    // 讀成 base64 → 立刻可預覽，也能存進 localStorage
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      setPreviewImage(dataUrl);
+
+      // 重要：把圖片塞回 add-image，讓你「送出新增」時會存進 imageUrl
+      // 這樣回到內容頁圖片才不會不見
+      urlInput.value = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 // 初始化
 loadCards();
 renderAlbum(currentPageIndex);
 applyListFilter();
 renderStats();
+wireSmartAddModal();

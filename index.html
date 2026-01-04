@@ -243,9 +243,16 @@
 
         <!-- 名稱：必填，但可以自動幫你帶入 -->
         <label class="full-row">
-          名稱（可自動帶入）
-          <input type="text" id="add-name" required placeholder="例如：Mina 小卡" />
+          圖片網址（貼上後自動判斷團體/成員）
+          <input type="text" id="add-image" placeholder="例如：img/tzuyu.jpg 或 https://..." />
         </label>
+
+        <label class="full-row">
+          或直接上傳圖片（僅本機預覽 / 也可存進瀏覽器）
+          <input type="file" id="add-image-file" accept="image/*" />
+        </label>
+
+        <div id="add-image-preview" class="add-image-preview">預覽</div>
 
         <!-- 自動判斷：預設先鎖起來讓人覺得很聰明（但可以改） -->
         <div class="two-col">
