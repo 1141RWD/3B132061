@@ -263,25 +263,9 @@ function renderList(filter) {
   });
 }
 
-// ===============================
-// Toast + 成就解鎖記錄（只留一份！）
-// ===============================
-const ACH_STORAGE_KEY = "achievements_unlocked_v1";
+// ===== 成就 Toast（只看當下 cards，不永久記錄）=====
 
-function getUnlockedSet() {
-  try {
-    const raw = localStorage.getItem(ACH_STORAGE_KEY);
-    const arr = raw ? JSON.parse(raw) : [];
-    return new Set(Array.isArray(arr) ? arr : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function saveUnlockedSet(set) {
-  localStorage.setItem(ACH_STORAGE_KEY, JSON.stringify([...set]));
-}
-
+// Toast container
 function ensureToastContainer() {
   let el = document.getElementById("toast-container");
   if (!el) {
@@ -292,7 +276,7 @@ function ensureToastContainer() {
   return el;
 }
 
-// 讓 Toast 排隊，不會一次疊到爆
+// 讓 Toast 排隊
 let toastChain = Promise.resolve();
 
 function showToast(message, opts = {}) {
@@ -326,102 +310,34 @@ function showToast(message, opts = {}) {
   );
 }
 
-// 統一團體大小寫避免重複統計
-function normalizeGroupName(group) {
-  const g = (group || "").trim();
-  if (!g) return "未設定團體";
-  return g.toUpperCase();
-}
+// ✅ 只在「這次操作」剛達成才跳 Toast（刷新不會記住）
+const sessionAchUnlocked = new Set();
 
-// ===== Stats 渲染 =====
-function renderBars(containerId, countsObj) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-
-  container.innerHTML = "";
-
-  const entries = Object.entries(countsObj || {});
-  if (entries.length === 0) {
-    container.textContent = "暫無資料";
-    return;
-  }
-
-  // 由大到小顯示比較直覺
-  entries.sort((a, b) => (b[1] || 0) - (a[1] || 0));
-
-  const maxValue = Math.max(...entries.map(([, v]) => v || 0), 1);
-
-  entries.forEach(([label, value]) => {
-    const row = document.createElement("div");
-    row.className = "stats-row";
-
-    const labelDiv = document.createElement("div");
-    labelDiv.className = "stats-label";
-    labelDiv.textContent = label;
-
-    const track = document.createElement("div");
-    track.className = "stats-bar-track";
-
-    const fill = document.createElement("div");
-    fill.className = "stats-bar-fill";
-    fill.style.width = `${((value || 0) / maxValue) * 100}%`;
-
-    track.appendChild(fill);
-
-    const valueDiv = document.createElement("div");
-    valueDiv.className = "stats-value";
-    valueDiv.textContent = value;
-
-    row.appendChild(labelDiv);
-    row.appendChild(track);
-    row.appendChild(valueDiv);
-
-    container.appendChild(row);
-  });
-}
-
-function renderStats() {
-  const summaryEl = document.getElementById("stats-summary");
-  const total = cards.length;
-  const favCount = cards.filter((c) => c.isFavorite).length;
-
-  if (summaryEl) {
-    summaryEl.innerHTML = `目前共收藏 <b style="color:#e11d48">${total}</b> 項，包含本命卡 <b style="color:#e11d48">${favCount}</b> 張。`;
-  }
-
-  // by group（統一大小寫）
-  const byGroup = {};
-  cards.forEach((c) => {
-    const g = normalizeGroupName(c.group);
-    byGroup[g] = (byGroup[g] || 0) + 1;
-  });
-
-  // by category
-  const byCategory = {};
-  cards.forEach((c) => {
-    const cat = (c.category || "未分類").trim();
-    byCategory[cat] = (byCategory[cat] || 0) + 1;
-  });
-
-  renderBars("stats-by-group", byGroup);
-  renderBars("stats-by-category", byCategory);
-
-  // 成就（含 Toast）
-  renderAchievements();
-}
-
-// ===== 成就（含 Toast 提醒）=====
 function renderAchievements() {
   const container = document.getElementById("achievement-list");
   if (!container) return;
-
   container.innerHTML = "";
 
   const total = cards.length;
   const favCount = cards.filter((c) => c.isFavorite).length;
 
-  const unlockedSet = getUnlockedSet();
+  // 你現在頁面顯示用的是「12格滿」文字，但你冊頁是 8 格
+  // 這裡我用 8 格。如果你要 12，再改這個數字。
+  const PAGE_SIZE = 8;
 
+  const maxPage = getMaxPageIndex();
+  const hasFullPage = (() => {
+    for (let p = 0; p <= maxPage; p++) {
+      let count = 0;
+      for (let s = 0; s < PAGE_SIZE; s++) {
+        if (cards.some((c) => c.pageIndex === p && c.slotIndex === s)) count++;
+      }
+      if (count >= PAGE_SIZE) return true;
+    }
+    return false;
+  })();
+
+  // ✅ 你新增成就徽章就在這個 defs 陣列加一筆就好
   const defs = [
     {
       id: "first-card",
@@ -445,37 +361,59 @@ function renderAchievements() {
       id: "twice-5",
       label: "TWICE 小富翁",
       desc: "TWICE 收藏達 5 張。",
-      unlockedNow: cards.filter(c => normalizeGroupName(c.group) === "TWICE").length >= 5
+      unlockedNow: cards.filter((c) => (c.group || "").toUpperCase() === "TWICE").length >= 5
     },
     {
-      id: "full-page-1",
+      id: "full-page",
       label: "滿頁收藏家",
-      desc: "完成任意一頁（12 格全滿）。",
-      unlockedNow: (() => {
-        const maxPage = getMaxPageIndex();
-        for (let p = 0; p <= maxPage; p++) {
-          const count = cards.filter(c => c.pageIndex === p).length;
-          if (count >= SLOTS_PER_PAGE) return true;
-        }
-        return false;
-      })()
-    },
-
+      desc: `完成任意一頁（${PAGE_SIZE} 格全滿）。`,
+      unlockedNow: hasFullPage
+    }
   ];
 
-  const newlyUnlocked = defs.filter((a) => a.unlockedNow && !unlockedSet.has(a.id));
+  // ✅ 本次操作新解鎖就跳 Toast（不存 localStorage）
+  const newlyUnlocked = defs.filter((a) => a.unlockedNow && !sessionAchUnlocked.has(a.id));
+  newlyUnlocked.forEach((a) => {
+    sessionAchUnlocked.add(a.id);
+    showToast(`解鎖成就：${a.label}`, { icon: "🏅", duration: 1800 });
+  });
+
+  // ✅ 畫面顯示：只要當下條件達成就亮綠色（刷新回初始4張就會變回正常）
+  defs.forEach((a) => {
+    const isUnlocked = a.unlockedNow;
+
+    const div = document.createElement("div");
+    div.className = "achievement" + (isUnlocked ? " unlocked" : "");
+
+    div.innerHTML = `
+      <span>${isUnlocked ? "🏅" : "🔒"}</span>
+      <div>
+        <div>${a.label}</div>
+        <div style="opacity:.7;">${a.desc}</div>
+      </div>
+    `;
+
+    container.appendChild(div);
+  });
+}
+
+  // ✅ 本次 session 已提醒過哪些成就（避免每次刷新狂跳 toast）
+  const toastSeen = getToastSeenSet();
+
+  // 找出「本次新達成且本 session 尚未提醒」
+  const newlyUnlocked = defs.filter((a) => a.unlockedNow && !toastSeen.has(a.id));
 
   if (newlyUnlocked.length > 0) {
-    newlyUnlocked.forEach((a) => unlockedSet.add(a.id));
-    saveUnlockedSet(unlockedSet);
-
     newlyUnlocked.forEach((a) => {
+      toastSeen.add(a.id);
       showToast(`解鎖成就：${a.label}`, { icon: "🏅", duration: 1800 });
     });
+    saveToastSeenSet(toastSeen);
   }
 
+  // ✅ 徽章渲染：完全只看 unlockedNow（不看 localStorage）
   defs.forEach((a) => {
-    const isUnlocked = unlockedSet.has(a.id) || a.unlockedNow;
+    const isUnlocked = a.unlockedNow;
     const isJustUnlocked = newlyUnlocked.some((x) => x.id === a.id);
 
     const div = document.createElement("div");
@@ -494,4 +432,21 @@ function renderAchievements() {
 
     container.appendChild(div);
   });
+
+
+// ✅ 判斷是否任意一頁 12 格全滿
+function hasAnyFullPage() {
+  if (!cards || cards.length === 0) return false;
+
+  const pageMap = new Map(); // pageIndex -> Set(slotIndex)
+  cards.forEach((c) => {
+    if (typeof c.pageIndex !== "number" || typeof c.slotIndex !== "number") return;
+    if (!pageMap.has(c.pageIndex)) pageMap.set(c.pageIndex, new Set());
+    pageMap.get(c.pageIndex).add(c.slotIndex);
+  });
+
+  for (const set of pageMap.values()) {
+    if (set.size >= 12) return true;
+  }
+  return false;
 }
