@@ -1507,3 +1507,78 @@ h1, h2, h3, .section-header h2, .brand h1 {
     box-shadow: 0 0 18px rgba(34, 197, 94, 0.35);
   }
 }
+
+/* === 翻頁動畫專用 CSS === */
+
+/* 設定 3D 透視感，讓翻頁看起來立體 */
+.album-wrapper {
+  perspective: 1500px; /* 數值越小，立體感越強 */
+  overflow: hidden;    /* 避免翻出去的頁面跑出框框 */
+}
+
+/* 翻頁層：預設隱藏，動畫時顯示 */
+.page-flip-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 50; /* 要蓋過下面的卡片 */
+  pointer-events: none; /* 讓點擊穿透，避免擋住操作 */
+  display: none; /* 平常隱藏 */
+  transform-style: preserve-3d;
+  transform-origin: left center; /* 重點：從左邊像書背一樣翻 */
+}
+
+.page-flip-layer.active {
+  display: block;
+}
+
+/* 模擬的那張紙 */
+.page-flip-paper {
+  width: 100%;
+  height: 100%;
+  background-color: #fff; /* 或配合你的背景色 */
+  background-size: cover;
+  background-position: center;
+  backface-visibility: hidden; /* 翻過去後背面看不到 */
+  border-radius: 8px; /* 配合你原本的圓角 */
+}
+
+/* 下一頁動畫：從 0度 翻到 -90度(或更多) */
+.anim-flip-next {
+  animation: flipToLeft 0.8s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
+}
+
+/* 上一頁動畫：從 -90度 翻回來 0度 */
+.anim-flip-prev {
+  animation: flipFromLeft 0.8s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
+}
+
+@keyframes flipToLeft {
+  0% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8; /* 翻到一半稍微變暗 */
+  }
+  100% {
+    transform: rotateY(-120deg); /* 往左翻超過 90 度 */
+    opacity: 0;
+  }
+}
+
+@keyframes flipFromLeft {
+  0% {
+    transform: rotateY(-120deg);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+}

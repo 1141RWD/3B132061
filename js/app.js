@@ -379,15 +379,109 @@ function openCardModal(cardId) {
   cardModal.classList.remove("hidden");
 }
 
-// 3. 翻頁按鈕事件監聽 (✅ 這是你原本漏掉的！)
+// 3. 翻頁按鈕事件監聽 (✨ 升級版：3D 翻書特效)
 const prevPageBtn = document.getElementById("prev-page");
 const nextPageBtn = document.getElementById("next-page");
 
-if (prevPageBtn) {
-  prevPageBtn.addEventListener("click", () => {
+// 封裝一個通用的翻頁函式
+async function handlePageFlip(direction) {
+  const albumGrid = document.getElementById("album-grid");
+  const flipLayer = document.getElementById("pageFlipLayer");
+  const flipPaper = document.getElementById("pageFlipPaper");
+  
+  // 防呆：如果元素抓不到，就直接切換資料就好
+  if (!albumGrid || !flipLayer || !flipPaper || !window.html2canvas) {
+    console.warn("缺少翻頁動畫元素，執行普通換頁");
+    updatePageData(direction);
+    return;
+  }
+
+  // 1. 【截圖】把現在這一頁拍下來
+  // scale: 2 可以讓截圖比較清晰
+  try {
+    const canvas = await html2canvas(albumGrid, { 
+      scale: 2, 
+      backgroundColor: null // 透明背景
+    });
+    
+    // 2. 【設定假頁面】把截圖貼到翻頁層
+    flipPaper.style.backgroundImage = `url(${canvas.toDataURL()})`;
+    flipLayer.classList.remove("anim-flip-next", "anim-flip-prev");
+    
+    // 3. 【判斷方向與動畫邏輯】
+    if (direction === 'next') {
+      // === 下一頁邏輯 ===
+      // A. 顯示假頁面 (它是舊內容的截圖)，蓋在最上面
+      flipLayer.classList.add("active");
+      
+      // B. 真正的底部換成「新的一頁」
+      updatePageData(direction); 
+      
+      // C. 播放動畫：假頁面往左翻走，露出底下的新頁面
+      flipLayer.classList.add("anim-flip-next");
+
+    } else {
+      // === 上一頁邏輯 (比較特別) ===
+      // 上一頁的邏輯是：新的頁面從左邊「蓋回來」
+      
+      // A. 先切換數據，算出「上一頁」長怎樣
+      // 但我們不能馬上顯示，所以先拍這張「上一頁」
+      // 這邊邏輯比較複雜，為了簡化，我們用簡單版視覺詐欺：
+      
+      // 簡單版策略：
+      // 1. 截圖「目前頁面」(舊)，當作底圖 (這裡比較難，我們先做單純的動畫)
+      // 為了效果順暢，上一頁我們做反向動畫即可：
+      
+      // 正確的上一頁流暢做法：
+      // 1. 先把數據換成上一頁
+      updatePageData(direction);
+      // 2. 等 render 完，這時候畫面上是「上一頁」
+      // 3. 但我們想要「看起來像是翻過來」，這需要比較高階的操作。
+      // 為了不讓程式碼太複雜，我們用「淡入翻轉」效果：
+      
+      flipLayer.classList.add("active");
+      flipLayer.classList.add("anim-flip-prev");
+      
+      // 因為上一頁動畫是從「透明」變「實體」，所以不需要預先貼圖
+      // 只需要讓它蓋在上面跑動畫即可 (這裡直接用新頁面的截圖會更像，但需要兩次 render)
+      // 這裡採用簡化版：直接翻。
+    }
+
+    // 4. 【清理】動畫結束後 (0.8秒)，隱藏翻頁層
+    setTimeout(() => {
+      flipLayer.classList.remove("active", "anim-flip-next", "anim-flip-prev");
+      flipPaper.style.backgroundImage = "";
+    }, 800); // 這裡的時間要跟 CSS animation 時間一樣
+
+  } catch (err) {
+    console.error("截圖失敗:", err);
+    updatePageData(direction);
+  }
+}
+
+// 這是原本的換頁數據邏輯，被獨立出來
+function updatePageData(direction) {
+  const maxPage = getMaxPageIndex();
+  
+  if (direction === 'next') {
+    if (currentPageIndex <= maxPage) {
+      currentPageIndex++;
+      renderAlbum(currentPageIndex);
+    }
+  } else if (direction === 'prev') {
     if (currentPageIndex > 0) {
       currentPageIndex--;
       renderAlbum(currentPageIndex);
+    }
+  }
+}
+
+// 綁定按鈕
+if (prevPageBtn) {
+  prevPageBtn.addEventListener("click", () => {
+    // 只有當不是第一頁時才動作
+    if (currentPageIndex > 0) {
+      handlePageFlip('prev');
     }
   });
 }
@@ -395,14 +489,12 @@ if (prevPageBtn) {
 if (nextPageBtn) {
   nextPageBtn.addEventListener("click", () => {
     const maxPage = getMaxPageIndex();
-    // 允許翻到最後一頁的下一頁(空白頁)
+    // 允許翻到最後一頁
     if (currentPageIndex <= maxPage) {
-      currentPageIndex++;
-      renderAlbum(currentPageIndex);
+      handlePageFlip('next');
     }
   });
 }
-
 // 4. 新增表單提交
 const addForm = document.getElementById("add-card-form");
 if (addForm) {
