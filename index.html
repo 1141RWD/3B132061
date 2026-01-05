@@ -188,32 +188,34 @@
   </div>
 
   <!-- ✅ 新增卡片 Modal（只保留這一套：smart-add） -->
+  <!-- 新增卡片 Modal（Smart Add 版） -->
   <div id="add-modal" class="modal hidden">
     <div class="modal-backdrop" data-close-modal></div>
+
     <div class="modal-content">
       <button class="modal-close" data-close-modal>&times;</button>
       <h3>新增收藏</h3>
 
       <form id="add-card-form" class="form-grid smart-add">
-        <!-- 圖片：貼網址 or 上傳 -->
+        <!-- 圖片：網址 + 上傳 -->
         <div class="full-row">
           <label class="label-title">圖片網址（貼上後自動判斷團體/成員）</label>
           <input type="text" id="add-image" placeholder="例如：img/tzuyu.jpg 或 https://..." />
 
           <div style="margin-top:10px;">
-            <label class="label-title">或直接上傳圖片（本機預覽 / 可存進瀏覽器）</label>
+            <label class="label-title">或直接上傳圖片（本機預覽）</label>
             <input type="file" id="add-image-file" accept="image/*" />
-            <div style="font-size:12px; opacity:0.7; margin-top:4px;">
-              ※ GitHub Pages 為靜態網站：上傳檔案不會真的傳到伺服器；若你之後開啟「存圖」版本，會轉 DataURL 存進瀏覽器。
+            <div style="font-size:12px; opacity:.7; margin-top:4px;">
+              ※ GitHub Pages 為靜態網站：上傳只做預覽；若你不想刷新保留，就維持現在這樣即可。
             </div>
           </div>
 
-          <div class="smart-row">
+          <div class="smart-row" style="margin-top:12px;">
             <div id="add-image-preview" class="image-preview is-empty">預覽</div>
 
             <div class="smart-meta">
               <div id="smart-status" class="smart-status">
-                貼上圖片後會自動填入「團體 / 成員」，你只要確認就好
+                貼上圖片 / 上傳檔案後會自動填入「團體 / 成員 / 類別 / 名稱」
               </div>
 
               <div class="smart-pills">
@@ -225,19 +227,20 @@
                   <option value="徽章">徽章</option>
                 </select>
 
-                <button type="button" id="toggle-advanced" class="ghost-btn">進階設定</button>
+                <button type="button" id="toggle-advanced" class="ghost-btn">
+                  進階設定
+                </button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 名稱 -->
+        <!-- 名稱：必填（但可自動帶入） -->
         <label class="full-row">
           名稱（可自動帶入）
-          <input type="text" id="add-name" placeholder="例如：Tzuyu 小卡" />
+          <input type="text" id="add-name" placeholder="例如：Tzuyu 小卡" required />
         </label>
 
-        <!-- 團體/成員 -->
         <div class="two-col">
           <label>
             團體（自動判斷，可修改）
@@ -254,7 +257,7 @@
           <textarea id="add-note" rows="3" placeholder="例如：在哪裡抽到、跟誰換到、想記錄什麼"></textarea>
         </label>
 
-        <!-- 進階欄位 -->
+        <!-- 進階欄位：可收合 -->
         <div id="advanced-area" class="advanced-area hidden">
           <div class="advanced-hint">進階資訊（可不填）</div>
 
