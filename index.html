@@ -2,9 +2,8 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>追星收藏冊互動系統</title>
-
   <link rel="stylesheet" href="css/style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,15 +16,9 @@
     <div class="cover-inner">
       <div class="cover-card" id="cover-card">
         <div class="cover-card-title">專屬卡冊</div>
-        <div class="cover-card-subtitle">
-          收藏專輯、小卡與周邊特典 ✨
-        </div>
+        <div class="cover-card-subtitle">收藏專輯、小卡與周邊特典 ✨</div>
       </div>
-
-      <button id="enter-album-btn" class="primary-btn cover-btn">
-        進入我的收藏冊
-      </button>
-
+      <button id="enter-album-btn" class="primary-btn cover-btn">進入我的收藏冊</button>
       <div class="cover-hint">點封面或周圍空白處也可以進入喔</div>
     </div>
   </div>
@@ -35,7 +28,6 @@
       <span class="brand-dot"></span>
       <h1>追星收藏冊互動系統</h1>
     </div>
-
     <nav class="tabs">
       <button class="tab-button active" data-target="album-view">收藏冊</button>
       <button class="tab-button" data-target="list-view">收藏清單</button>
@@ -54,25 +46,23 @@
       <div class="album-wrapper">
         <div class="album-header">
           <button id="prev-page" class="ghost-btn">&lt; 上一頁</button>
-
           <div class="album-page-info">
             第 <span id="current-page">1</span> 頁
           </div>
-
           <button id="next-page" class="ghost-btn">下一頁 &gt;</button>
         </div>
 
         <div class="album">
           <div class="album-center-line"></div>
 
-          <!-- 翻頁用的疊層 -->
+          <!-- 翻頁用疊層 -->
           <div class="page-flip-layer" id="pageFlipLayer" data-html2canvas-ignore="true" aria-hidden="true">
             <div class="page-flip-shadow" id="pageFlipShadow"></div>
             <div class="page-flip-paper" id="pageFlipPaper"></div>
           </div>
 
           <div id="album-grid" class="album-grid">
-            <!-- JS 產生 12 個格子 -->
+            <!-- JS 產生 12 格 -->
           </div>
         </div>
       </div>
@@ -87,7 +77,6 @@
 
       <div class="filter-bar">
         <input type="text" id="search-input" placeholder="搜尋名稱 / 團體 / 成員…" />
-
         <select id="category-filter">
           <option value="">全部類別</option>
           <option value="小卡">小卡</option>
@@ -95,19 +84,9 @@
           <option value="周邊">周邊</option>
           <option value="徽章">徽章</option>
         </select>
-
         <select id="favorite-filter">
           <option value="">全部收藏</option>
           <option value="favorite">只看本命卡</option>
-        </select>
-
-        <select id="sort-select">
-          <option value="newest" selected>最新加入</option>
-          <option value="oldest">最早加入</option>
-          <option value="fav_newest">本命優先（再按最新）</option>
-          <option value="group_member">依團體 → 成員</option>
-          <option value="category">依類別</option>
-          <option value="gotDate_newest">依獲得日期（新→舊）</option>
         </select>
       </div>
 
@@ -140,7 +119,7 @@
         </div>
 
         <div class="stats-panel">
-          <h3>成就徽章（示意）</h3>
+          <h3>成就徽章</h3>
           <div id="achievement-list" class="achievement-list"></div>
         </div>
       </div>
@@ -150,12 +129,10 @@
   <!-- 卡片詳情 Modal -->
   <div id="card-modal" class="modal hidden">
     <div class="modal-backdrop"></div>
-
     <div class="modal-content detail-modal">
       <button class="modal-close" data-close-modal>&times;</button>
 
       <div class="detail-layout">
-        <!-- 左側：大卡片預覽 -->
         <div class="detail-image-card">
           <div id="detail-image" class="detail-image-placeholder"></div>
           <div id="detail-group-tag" class="detail-image-top-tag">GROUP</div>
@@ -166,7 +143,6 @@
           </div>
         </div>
 
-        <!-- 右側：文字資訊 -->
         <div class="detail-info">
           <div class="detail-title-block">
             <div id="detail-rare-tag" class="detail-rare-tag">COLLECTION CARD</div>
@@ -211,10 +187,9 @@
     </div>
   </div>
 
-  <!-- 新增卡片 Modal -->
+  <!-- ✅ 新增卡片 Modal（只保留這一套：smart-add） -->
   <div id="add-modal" class="modal hidden">
     <div class="modal-backdrop" data-close-modal></div>
-
     <div class="modal-content">
       <button class="modal-close" data-close-modal>&times;</button>
       <h3>新增收藏</h3>
@@ -226,10 +201,10 @@
           <input type="text" id="add-image" placeholder="例如：img/tzuyu.jpg 或 https://..." />
 
           <div style="margin-top:10px;">
-            <label class="label-title">或直接上傳圖片（本機預覽 + 會存進瀏覽器）</label>
+            <label class="label-title">或直接上傳圖片（本機預覽 / 可存進瀏覽器）</label>
             <input type="file" id="add-image-file" accept="image/*" />
             <div style="font-size:12px; opacity:0.7; margin-top:4px;">
-              ※ GitHub Pages 為靜態網站：上傳檔案不會真的傳到伺服器，但我們會把圖片轉成 DataURL 存進 localStorage，所以回內容頁也不會不見。
+              ※ GitHub Pages 為靜態網站：上傳檔案不會真的傳到伺服器；若你之後開啟「存圖」版本，會轉 DataURL 存進瀏覽器。
             </div>
           </div>
 
@@ -274,7 +249,6 @@
           </label>
         </div>
 
-        <!-- 備註 -->
         <label class="full-row">
           備註（選填）
           <textarea id="add-note" rows="3" placeholder="例如：在哪裡抽到、跟誰換到、想記錄什麼"></textarea>
