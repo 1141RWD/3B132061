@@ -291,18 +291,8 @@ function wireSmartAddModal() {
 // ===============================
 // ===== 以下是原本主程式：Tabs/Modal/新增 =====
 // ===============================
-// ✅ 確保 window.cards 一定存在（給 stats/achievements/list 用）
-if (!window.cards) window.cards = [];
-// 讓本檔用的 cards 也指向同一份（避免兩份不同步）
-const cards = window.cards;
 
 let currentPageIndex = 0;
-window.currentPageIndex = currentPageIndex;
-
-function setCurrentPageIndex(v) {
-  currentPageIndex = Math.max(0, v | 0);
-  window.currentPageIndex = currentPageIndex; // ✅ 讓 ui.js 拿得到
-}
 
 // Tabs
 const tabButtons = document.querySelectorAll(".tab-button");
@@ -435,11 +425,10 @@ document.getElementById("add-card-form").addEventListener("submit", (e) => {
   saveCards();
   closeAllModals();
 
-  setCurrentPageIndex = target.pageIndex;
+  currentPageIndex = target.pageIndex;
   renderAlbum(currentPageIndex);
   applyListFilter();
   renderStats();
-  renderAchievements();
 });
 
 // List filter
@@ -468,5 +457,4 @@ document.addEventListener("DOMContentLoaded", () => {
   renderAlbum(currentPageIndex);
   applyListFilter();
   renderStats();
-  renderAchievements();
 });
