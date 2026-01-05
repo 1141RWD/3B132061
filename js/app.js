@@ -564,90 +564,87 @@ function applyListFilter() {
 
 // 6. 統計 renderStats
 // ✅ 修正：移除不存在的 getAllCardsSafe()，改成直接用 cards
+// 修改 app.js 中的 renderStats 函式
 function renderStats() {
-  const all = cards; // 直接用全域變數
+  const all = cards; // 直接讀取全域變數
   const total = all.length;
   const fav = all.filter(c => !!c.isFavorite).length;
+  const regular = Math.max(0, total - fav);
 
+  // ===== 1) 收藏概況：改成漂亮的卡片 =====
   const summaryEl = document.getElementById("stats-summary");
   if (summaryEl) {
+    // 這裡我們直接改變父層的 display 方式，或者在 CSS 裡針對 #stats-summary 設定
+    // 為了保險，我們直接塞入一個 grid container
     summaryEl.innerHTML = `
-      <div class="stat-chip">
-        <div class="stat-chip__label">總收藏</div>
-        <div class="stat-chip__value">${total}</div>
-      </div>
-      <div class="stat-chip">
-        <div class="stat-chip__label">本命卡</div>
-        <div class="stat-chip__value">${fav}</div>
-      </div>
-      <div class="stat-chip">
-        <div class="stat-chip__label">一般收藏</div>
-        <div class="stat-chip__value">${Math.max(0, total - fav)}</div>
+      <div class="stats-summary-grid">
+        <div class="stat-card highlight">
+          <div class="stat-icon">📦</div>
+          <div class="stat-value">${total}</div>
+          <div class="stat-label">總收藏</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💖</div>
+          <div class="stat-value">${fav}</div>
+          <div class="stat-label">本命卡</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💿</div>
+          <div class="stat-value">${regular}</div>
+          <div class="stat-label">一般收藏</div>
+        </div>
       </div>
     `;
   }
 
-  // 依團體
+  // ===== Helper: 產生進度條 HTML =====
+  const renderChart = (map, containerId) => {
+    const list = [...map.entries()].sort((a, b) => b[1] - a[1]);
+    const el = document.getElementById(containerId);
+    
+    if (!el) return;
+
+    if (list.length === 0) {
+      el.innerHTML = `<div class="empty-hint" style="text-align:center; padding:20px; color:#aaa; font-size:13px;">目前還沒有資料</div>`;
+    } else {
+      const max = Math.max(...list.map(([, v]) => v), 1); // 找出最大值當作 100%
+      
+      el.innerHTML = `
+        <div class="chart-container">
+          ${list.map(([name, count]) => {
+            const percent = Math.round((count / max) * 100);
+            return `
+              <div class="chart-row">
+                <div class="chart-header">
+                  <span>${name}</span>
+                  <span>${count}</span>
+                </div>
+                <div class="chart-track">
+                  <div class="chart-bar" style="width: ${percent}%"></div>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+  };
+
+  // ===== 2) 依團體統計 =====
   const groupMap = new Map();
   for (const c of all) {
-    const g = (c.group || "UNKNOWN").trim() || "UNKNOWN";
+    const g = (c.group || "UNKNOWN").trim() || "未設定";
     groupMap.set(g, (groupMap.get(g) || 0) + 1);
   }
-  const groupList = [...groupMap.entries()].sort((a, b) => b[1] - a[1]);
+  renderChart(groupMap, "stats-by-group");
 
-  const groupEl = document.getElementById("stats-by-group");
-  if (groupEl) {
-    if (groupList.length === 0) {
-      groupEl.innerHTML = `<div class="empty-hint">目前還沒有收藏資料</div>`;
-    } else {
-      const max = Math.max(...groupList.map(([, v]) => v), 1);
-      groupEl.innerHTML = groupList.map(([name, count]) => {
-        const w = Math.round((count / max) * 100);
-        return `
-          <div class="bar-row">
-            <div class="bar-row__head">
-              <span class="bar-row__label">${name}</span>
-              <strong class="bar-row__value">${count}</strong>
-            </div>
-            <div class="bar">
-              <div class="bar__fill" style="width:${w}%"></div>
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-  }
-
-  // 依類別
+  // ===== 3) 依類別統計 =====
   const catMap = new Map();
   for (const c of all) {
     const cat = (c.category || "未分類").trim() || "未分類";
     catMap.set(cat, (catMap.get(cat) || 0) + 1);
   }
-  const catList = [...catMap.entries()].sort((a, b) => b[1] - a[1]);
-
-  const catEl = document.getElementById("stats-by-category");
-  if (catEl) {
-    if (catList.length === 0) {
-      catEl.innerHTML = `<div class="empty-hint">目前還沒有收藏資料</div>`;
-    } else {
-      const max = Math.max(...catList.map(([, v]) => v), 1);
-      catEl.innerHTML = catList.map(([name, count]) => {
-        const w = Math.round((count / max) * 100);
-        return `
-          <div class="bar-row">
-            <div class="bar-row__head">
-              <span class="bar-row__label">${name}</span>
-              <strong class="bar-row__value">${count}</strong>
-            </div>
-            <div class="bar">
-              <div class="bar__fill" style="width:${w}%"></div>
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-  }
+  renderChart(catMap, "stats-by-category");
 }
 
 // 注意：這裡移除了 app.js 裡面的 renderAchievements，

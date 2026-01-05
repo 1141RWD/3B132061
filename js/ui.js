@@ -406,10 +406,10 @@ function renderAchievements() {
       (isJustUnlocked ? " just-unlocked" : "");
 
     div.innerHTML = `
-      <span>${isUnlocked ? "🏅" : "🔒"}</span>
-      <div>
-        <div>${a.label}</div>
-        <div style="opacity:.7;">${a.desc}</div>
+      <div class="ach-icon">${isUnlocked ? "🏆" : "🔒"}</div>
+      <div class="ach-info">
+        <div class="ach-title">${a.label}</div>
+        <div class="ach-desc">${a.desc}</div>
       </div>
     `;
 
