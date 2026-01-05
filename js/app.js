@@ -380,226 +380,181 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 760);
   }
 
-  // ===============================
-  // 8) Smart Add：圖片 → 推論團體/成員 + 預覽（唯一版本）
-  // ===============================
+// ===============================
+// Smart Add：圖片 / 檔名 → 推論團體/成員 + 預覽 + 名稱自動帶入
+// ===============================
 
-  // 你可持續擴充：檔名出現這些字就能判斷
-  const MEMBER_DB = {
-    TWICE: ["Mina", "Momo", "Nayeon", "Sana", "Tzuyu", "Jihyo", "Jeongyeon", "Dahyun", "Chaeyoung"],
-    MAMAMOO: ["Solar", "Moonbyul", "Wheein", "Hwasa"],
-    VIVIZ: ["Eunha", "SinB", "Umji"],
+// 成員→團體對照（可擴充）
+const MEMBER_TO_GROUP = {
+  // TWICE
+  mina: "TWICE", momo: "TWICE", nayeon: "TWICE", sana: "TWICE", tzuyu: "TWICE",
+  jihyo: "TWICE", dahyun: "TWICE", chaeyoung: "TWICE", jeongyeon: "TWICE",
+
+  // MAMAMOO
+  solar: "MAMAMOO", moonbyul: "MAMAMOO", wheein: "MAMAMOO", hwasa: "MAMAMOO",
+
+  // VIVIZ
+  eunha: "VIVIZ", sinb: "VIVIZ", umji: "VIVIZ"
+};
+
+// 類別關鍵字（檔名含這些就幫你自動改類別 + 名稱結尾）
+const CATEGORY_HINTS = [
+  { key: "badge", category: "徽章", suffix: "徽章" },
+  { key: "dvd", category: "周邊", suffix: "DVD" },
+  { key: "album", category: "專輯", suffix: "專輯" },
+  // 其他都算周邊（你說的規則）
+];
+
+function normalizeHint(text) {
+  return (text || "")
+    .toLowerCase()
+    .split("?")[0]
+    .split("#")[0];
+}
+
+function inferFromText(text) {
+  const hint = normalizeHint(text);
+
+  // 1) 先找成員
+  for (const memberKey of Object.keys(MEMBER_TO_GROUP)) {
+    if (hint.includes(memberKey)) {
+      return { memberKey, group: MEMBER_TO_GROUP[memberKey] };
+    }
+  }
+  return { memberKey: "", group: "" };
+}
+
+function titleCaseMember(memberKey) {
+  if (!memberKey) return "";
+  // sinb -> SinB 這種特例你也可加
+  if (memberKey === "sinb") return "SinB";
+  if (memberKey === "moonbyul") return "Moonbyul";
+  return memberKey.charAt(0).toUpperCase() + memberKey.slice(1);
+}
+
+function inferCategoryFromText(text) {
+  const hint = normalizeHint(text);
+  for (const h of CATEGORY_HINTS) {
+    if (hint.includes(h.key)) return { category: h.category, suffix: h.suffix };
+  }
+  return null;
+}
+
+function setPreviewImage(urlOrDataUrl) {
+  const preview = document.getElementById("add-image-preview");
+  if (!preview) return;
+
+  if (!urlOrDataUrl) {
+    preview.classList.add("is-empty");
+    preview.style.backgroundImage = "";
+    preview.textContent = "預覽";
+    return;
+  }
+
+  preview.classList.remove("is-empty");
+  preview.textContent = "";
+  preview.style.backgroundImage = `url(${urlOrDataUrl})`;
+  preview.style.backgroundSize = "cover";
+  preview.style.backgroundPosition = "center";
+}
+
+function wireSmartAddModal() {
+  const urlInput = document.getElementById("add-image");
+  const fileInput = document.getElementById("add-image-file");
+  const nameInput = document.getElementById("add-name");
+  const groupInput = document.getElementById("add-group");
+  const memberInput = document.getElementById("add-member");
+  const catSelect = document.getElementById("add-category");
+  const statusEl = document.getElementById("smart-status");
+
+  // 任一不存在就直接退出（避免整個新增壞掉）
+  if (!urlInput || !fileInput || !nameInput || !groupInput || !memberInput || !catSelect || !statusEl) {
+    console.warn("[smart-add] Missing elements. Check your HTML IDs (do not duplicate ids).");
+    return;
+  }
+
+  const applyInference = (refText) => {
+    const { memberKey, group } = inferFromText(refText);
+    const member = titleCaseMember(memberKey);
+
+    // 類別推論：badge/dvd/album
+    const catHint = inferCategoryFromText(refText);
+    if (catHint) {
+      catSelect.value = catHint.category;
+    } else {
+      // 你規則：除了特別訂好的其他都算周邊（但小卡/專輯/徽章有關鍵字才切）
+      // 這裡不強制改類別，維持使用者現在選的
+    }
+
+    // 自動填入（只有空白才寫，避免覆蓋你手動改的）
+    if (group && !groupInput.value.trim()) groupInput.value = group;
+    if (member && !memberInput.value.trim()) memberInput.value = member;
+
+    // 名稱：根據「檔名/關鍵字」自動決定結尾
+    if (!nameInput.value.trim()) {
+      const cat = catSelect.value; // 小卡/專輯/周邊/徽章
+      const suffix = catHint?.suffix || cat; // badge->徽章、dvd->DVD、其他就用類別
+      if (member) nameInput.value = `${member} ${suffix}`;
+      else nameInput.value = `未命名 ${suffix}`;
+    }
+
+    // 狀態提示
+    if (member && group) {
+      statusEl.textContent = `已自動判斷：${group} · ${member}（可直接加入或自行修改）`;
+      statusEl.className = "smart-status ok";
+    } else if (group) {
+      statusEl.textContent = `判斷到團體：${group}（成員不確定，你可以補一下）`;
+      statusEl.className = "smart-status warn";
+    } else if (refText) {
+      statusEl.textContent = "圖片已填入，但目前無法判斷團體/成員（你可以手動輸入）";
+      statusEl.className = "smart-status warn";
+    } else {
+      statusEl.textContent = "貼上圖片後會自動填入「團體 / 成員」，你只要確認就好";
+      statusEl.className = "smart-status";
+    }
   };
 
-  function buildAliasMap() {
-    const map = new Map();
-    for (const [group, members] of Object.entries(MEMBER_DB)) {
-      map.set(group.toLowerCase(), { group, member: "" });
-      for (const m of members) {
-        map.set(m.toLowerCase(), { group, member: m });
-      }
-    }
-    // 常見變體/暱稱（你可以一直加）
-    map.set("sinb", { group: "VIVIZ", member: "SinB" });
-    map.set("jungyeon", { group: "TWICE", member: "Jeongyeon" });
-    map.set("jeongyeon", { group: "TWICE", member: "Jeongyeon" });
-    return map;
-  }
-  const ALIAS_MAP = buildAliasMap();
-
-  function extractTokens(ref) {
-    if (!ref) return [];
-    const clean = decodeURIComponent(ref.split("#")[0].split("?")[0]);
-    const last = clean.split("/").pop() || clean;
-    const base = last.replace(/\.(png|jpg|jpeg|webp|gif)$/i, "");
-    return base.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-  }
-
-  function inferGroupMemberFromRef(ref) {
-    const tokens = extractTokens(ref);
-    let group = "";
-    let member = "";
-    for (const t of tokens) {
-      const hit = ALIAS_MAP.get(t);
-      if (!hit) continue;
-      if (hit.group && !group) group = hit.group;
-      if (hit.member && !member) {
-        member = hit.member;
-        group = hit.group;
-        break;
-      }
-    }
-    return { group, member };
-  }
-
-  // ✅ 類別推論：badge -> 徽章；album/cd -> 專輯；dvd -> 周邊；其餘預設小卡
-  function inferCategoryFromTokens(tokens) {
-    const has = (k) => tokens.includes(k);
-
-    if (has("badge") || has("pin") || has("brooch")) return "徽章";
-    if (has("album") || has("cd")) return "專輯";
-    if (has("dvd") || has("bluray") || has("blu") || has("concert")) return "周邊";
-
-    return "小卡";
-  }
-
-  // ✅ 名稱推論：
-  // - 徽章：{member} 徽章
-  // - 小卡：{member} 小卡
-  // - 專輯：{group} + (可讀系列) + 專輯
-  // - 周邊：{group/member} + (可讀系列) + 周邊
-  function inferSeriesText(tokens) {
-    // 你可以依你的檔名習慣調整
-    // 例如 twice-feel_special-album -> feel special
-    const skip = new Set(["twice", "mamamoo", "viviz", "album", "cd", "dvd", "badge", "pin", "jpg", "jpeg", "png", "webp", "gif"]);
-    const kept = tokens.filter(t => !skip.has(t));
-
-    // 做一個比較漂亮的顯示：feel_special -> Feel Special
-    const pretty = kept.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-    return pretty.trim();
-  }
-
-  function buildAutoName({ category, group, member, tokens }) {
-    const series = inferSeriesText(tokens);
-
-    if (category === "徽章") {
-      return member ? `${member} 徽章` : (group ? `${group} 徽章` : "徽章");
-    }
-    if (category === "小卡") {
-      return member ? `${member} 小卡` : (group ? `${group} 小卡` : "小卡");
-    }
-    if (category === "專輯") {
-      if (group && series) return `${group} ${series} 專輯`;
-      if (group) return `${group} 專輯`;
-      return series ? `${series} 專輯` : "專輯";
-    }
-    // 周邊
-    if (group && series) return `${group} ${series} 周邊`;
-    if (member && series) return `${member} ${series} 周邊`;
-    if (group) return `${group} 周邊`;
-    if (member) return `${member} 周邊`;
-    return series ? `${series} 周邊` : "周邊";
-  }
-
-  // ✅ 預覽：用 <img> 最穩（比 background-image 更不容易被 CSS 蓋掉）
-  function setPreview(previewBox, src) {
-    if (!previewBox) return;
-
-    let img = previewBox.querySelector("img");
-    if (!img) {
-      img = document.createElement("img");
-      img.alt = "preview";
-      img.style.width = "100%";
-      img.style.height = "100%";
-      img.style.objectFit = "cover";
-      img.style.borderRadius = "14px";
-      previewBox.innerHTML = ""; // 清掉「預覽」文字
-      previewBox.appendChild(img);
-    }
-
-    if (!src) {
-      previewBox.innerHTML = "預覽";
-      previewBox.classList.add("is-empty");
-      return;
-    }
-
-    previewBox.classList.remove("is-empty");
-    img.src = src;
-
-    // 如果外連被擋（很常見），至少顯示提示
-    img.onerror = () => {
-      previewBox.innerHTML = "（此圖片來源可能擋外連，預覽失敗）";
-      previewBox.classList.add("is-empty");
-    };
-  }
-
-  function wireSmartAddModal() {
-    const urlInput = document.getElementById("add-image");
-    const fileInput = document.getElementById("add-image-file");
-    const previewBox = document.getElementById("add-image-preview");
-
-    const nameInput = document.getElementById("add-name");
-    const groupInput = document.getElementById("add-group");
-    const memberInput = document.getElementById("add-member");
-    const catSelect = document.getElementById("add-category");
-
-    const statusEl = document.getElementById("smart-status"); // 有就更新文案，沒有也不會壞
-
-    if (!urlInput || !fileInput || !previewBox || !nameInput || !groupInput || !memberInput || !catSelect) {
-      console.warn("[smart-add] 缺少必要元素，請檢查 HTML 的 id 是否正確且沒有重複。");
-      return;
-    }
-
-    async function applyInfer(ref, preferUserText = false) {
-      const tokens = extractTokens(ref);
-
-      // 1) 團體/成員
-      const { group, member } = inferGroupMemberFromRef(ref);
-
-      // 2) 類別（可被使用者手動選擇覆蓋）
-      const inferredCategory = inferCategoryFromTokens(tokens);
-
-      // 如果使用者還沒選過，就自動幫他切類別
-      if (!preferUserText) {
-        catSelect.value = inferredCategory;
-      }
-
-      // 3) 自動填入（只在空白時填，不覆蓋使用者手動輸入）
-      if (group && !groupInput.value.trim()) groupInput.value = group;
-      if (member && !memberInput.value.trim()) memberInput.value = member;
-
-      // 4) 名稱：根據（類別 + 成員/團體 + 檔名）產生
-      if (!nameInput.value.trim()) {
-        const finalCategory = catSelect.value || inferredCategory;
-        nameInput.value = buildAutoName({ category: finalCategory, group, member, tokens });
-      }
-
-      // 5) 狀態提示（可選）
-      if (statusEl) {
-        if (group && member) statusEl.textContent = `已自動判斷：${group} · ${member}（名稱/類別也已建議）`;
-        else if (group) statusEl.textContent = `判斷到團體：${group}（成員不確定，可自行補）`;
-        else statusEl.textContent = "已填入圖片（目前無法判斷團體/成員，可手動輸入）";
-      }
-    }
-
-    // ✅ 貼網址：預覽 + 推論
-    urlInput.addEventListener("input", () => {
-      const url = urlInput.value.trim();
-      setPreview(previewBox, url);
-      if (url) applyInfer(url, true);
-    });
-
-    // ✅ 上傳：本機預覽 + 轉 DataURL 存回 add-image（讓你「加入收藏」能存起來）
-    fileInput.addEventListener("change", () => {
-      const file = fileInput.files?.[0];
-      if (!file) return;
-
-      // 用檔名先推論（立刻填團體/成員/類別/名稱）
-      applyInfer(file.name, false);
-
-      // 再用 DataURL 做預覽 + 存進 add-image（這樣加入收藏會保存）
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result;
-        urlInput.value = dataUrl;
-        setPreview(previewBox, dataUrl);
-      };
-      reader.readAsDataURL(file);
-    });
-
-    // ✅ 使用者自己改類別時：如果名稱還是空的，才重新建議一次
-    catSelect.addEventListener("change", () => {
-      if (!nameInput.value.trim()) {
-        const ref = urlInput.value.trim();
-        if (ref) applyInfer(ref, true);
-      }
-    });
-  }
-
-  // DOM ready 後再綁定
-  document.addEventListener("DOMContentLoaded", () => {
-    wireSmartAddModal();
+  // 1) 貼網址 → 直接預覽（注意：有些外站會擋外連，預覽出不來是正常）
+  urlInput.addEventListener("input", () => {
+    const url = urlInput.value.trim();
+    setPreviewImage(url);
+    applyInference(url);
   });
+
+  // 2) 上傳檔案 → 讀 DataURL 預覽 + 用檔名推論
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+
+    // 先用檔名推論（最穩）
+    applyInference(file.name);
+
+    // 再讀 DataURL 做預覽
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      setPreviewImage(dataUrl);
+
+      // 讓「送出新增」imageUrl 也有值（即使你不存圖，也至少當下能顯示）
+      urlInput.value = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // 類別改變，如果名稱還是空白，就跟著更新一次名稱結尾
+  catSelect.addEventListener("change", () => {
+    if (!nameInput.value.trim()) {
+      const m = memberInput.value.trim();
+      const cat = catSelect.value;
+      nameInput.value = m ? `${m} ${cat}` : `未命名 ${cat}`;
+    }
+  });
+}
+
+// DOM Ready 後再綁定，避免抓不到元素
+document.addEventListener("DOMContentLoaded", () => {
+  wireSmartAddModal();
+});
 
   // ===============================
   // 9) 初始化（最底下只做一次）
