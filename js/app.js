@@ -439,12 +439,6 @@ function applyListFilter() {
   renderList(filter);
 }
 
-// ===== 保險用：避免 openAddModal 爆炸 =====
-function resetSmartAddUI() {
-  // 目前不做任何事
-  // 之後要 Smart Add 再補內容
-}
-
 // 初始化
 document.addEventListener("DOMContentLoaded", () => {
   wireSmartAddModal();
