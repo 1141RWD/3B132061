@@ -410,18 +410,40 @@ function renderStats() {
   renderAchievements();
 }
 
-// ===== 成就（含 Toast 提醒）=====
+// ===== 成就徽章（不持久化，只看當下 cards）=====
+// Toast 只在「本次開啟頁面」提醒一次：用 sessionStorage
+const ACH_TOAST_SESSION_KEY = "achievements_toast_seen_v1";
+
+function getToastSeenSet() {
+  try {
+    const raw = sessionStorage.getItem(ACH_TOAST_SESSION_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveToastSeenSet(set) {
+  sessionStorage.setItem(ACH_TOAST_SESSION_KEY, JSON.stringify([...set]));
+}
+
 function renderAchievements() {
   const container = document.getElementById("achievement-list");
   if (!container) return;
-
   container.innerHTML = "";
 
   const total = cards.length;
   const favCount = cards.filter((c) => c.isFavorite).length;
 
-  const unlockedSet = getUnlockedSet();
+  // ✅ 團體計數（注意大小寫統一）
+  const groupCount = {};
+  cards.forEach((c) => {
+    const g = normalizeGroupName(c.group);
+    groupCount[g] = (groupCount[g] || 0) + 1;
+  });
 
+  // ✅ 你要加新成就，就加在 defs 這裡
   const defs = [
     {
       id: "first-card",
@@ -442,39 +464,36 @@ function renderAchievements() {
       unlockedNow: favCount >= 3
     },
     {
-      id: "twice-5",
+      id: "twice-collector-5",
       label: "TWICE 小富翁",
       desc: "TWICE 收藏達 5 張。",
-      unlockedNow: cards.filter(c => normalizeGroupName(c.group) === "TWICE").length >= 5
+      unlockedNow: (groupCount["TWICE"] || 0) >= 5
     },
     {
-      id: "full-page-1",
+      id: "full-page",
       label: "滿頁收藏家",
       desc: "完成任意一頁（12 格全滿）。",
-      unlockedNow: (() => {
-        const maxPage = getMaxPageIndex();
-        for (let p = 0; p <= maxPage; p++) {
-          const count = cards.filter(c => c.pageIndex === p).length;
-          if (count >= SLOTS_PER_PAGE) return true;
-        }
-        return false;
-      })()
+      unlockedNow: hasAnyFullPage()
     }
   ];
 
-  const newlyUnlocked = defs.filter((a) => a.unlockedNow && !unlockedSet.has(a.id));
+  // ✅ 本次 session 已提醒過哪些成就（避免每次刷新狂跳 toast）
+  const toastSeen = getToastSeenSet();
+
+  // 找出「本次新達成且本 session 尚未提醒」
+  const newlyUnlocked = defs.filter((a) => a.unlockedNow && !toastSeen.has(a.id));
 
   if (newlyUnlocked.length > 0) {
-    newlyUnlocked.forEach((a) => unlockedSet.add(a.id));
-    saveUnlockedSet(unlockedSet);
-
     newlyUnlocked.forEach((a) => {
+      toastSeen.add(a.id);
       showToast(`解鎖成就：${a.label}`, { icon: "🏅", duration: 1800 });
     });
+    saveToastSeenSet(toastSeen);
   }
 
+  // ✅ 徽章渲染：完全只看 unlockedNow（不看 localStorage）
   defs.forEach((a) => {
-    const isUnlocked = unlockedSet.has(a.id) || a.unlockedNow;
+    const isUnlocked = a.unlockedNow;
     const isJustUnlocked = newlyUnlocked.some((x) => x.id === a.id);
 
     const div = document.createElement("div");
@@ -493,4 +512,21 @@ function renderAchievements() {
 
     container.appendChild(div);
   });
+}
+
+// ✅ 判斷是否任意一頁 12 格全滿
+function hasAnyFullPage() {
+  if (!cards || cards.length === 0) return false;
+
+  const pageMap = new Map(); // pageIndex -> Set(slotIndex)
+  cards.forEach((c) => {
+    if (typeof c.pageIndex !== "number" || typeof c.slotIndex !== "number") return;
+    if (!pageMap.has(c.pageIndex)) pageMap.set(c.pageIndex, new Set());
+    pageMap.get(c.pageIndex).add(c.slotIndex);
+  });
+
+  for (const set of pageMap.values()) {
+    if (set.size >= 12) return true;
+  }
+  return false;
 }
