@@ -1307,12 +1307,11 @@ h1, h2, h3, .section-header h2, .brand h1 {
 }
 
 /* =========================================
-   真實書本中線翻頁 CSS (柔感光影加強版)
+   精品級中線翻頁 CSS (Clean & Bouncy)
    ========================================= */
 
 .album-wrapper {
-  /* 透視感：數值適中，太小會變形太嚴重 */
-  perspective: 2500px;
+  perspective: 3000px; /* 拉遠透視，減少變形，讓畫面更正 */
   position: relative;
   overflow: visible;
 }
@@ -1332,114 +1331,68 @@ h1, h2, h3, .section-header h2, .brand h1 {
   display: block;
 }
 
-/* 通用的半頁設定 */
+/* === 半頁容器 === */
 .flip-half {
   position: absolute;
   top: 0;
   width: 50%;
   height: 100%;
   background-color: #ffffff;
-  /* 稍微調整背景尺寸，避免邊緣出現縫隙 */
-  background-size: 200.5% 100%; 
-  backface-visibility: hidden;
+  background-size: 200% 100%; /* 精準的 200% */
+  backface-visibility: hidden; /* 背面隱藏 */
   transform-style: preserve-3d;
   
-  /* 基礎陰影 */
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
-}
-
-/* 🔥 新增：用偽元素來製造「彎曲光影」圖層 */
-.flip-half::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0; /* 預設隱藏，動畫中才顯示 */
-  pointer-events: none;
-  /* 確保光影層在截圖之上 */
-  z-index: 2; 
+  /* 移除原本的模糊陰影，改用銳利一點的邊框線，增加精緻感 */
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.03); 
 }
 
 /* 左半頁 */
 .flip-left {
   left: 0;
   border-radius: 24px 0 0 24px;
-  transform-origin: right center; /* 軸心在右側書背 */
-  background-position: left center;
-}
-
-/* 🔥 左頁的光影：靠近書背(右側)亮，往左漸暗 */
-.flip-left::after {
-  background: linear-gradient(to left, rgba(255,255,255,0.4) 0%, rgba(0,0,0,0.1) 100%);
+  transform-origin: right center; /* 軸心在右邊 */
+  background-position: left top;
 }
 
 /* 右半頁 */
 .flip-right {
   right: 0;
   border-radius: 0 24px 24px 0;
-  transform-origin: left center; /* 軸心在左側書背 */
-  background-position: right center;
+  transform-origin: left center; /* 軸心在左邊 */
+  background-position: right top;
 }
 
-/* 🔥 右頁的光影：靠近書背(左側)亮，往右漸暗 */
-.flip-right::after {
-  background: linear-gradient(to right, rgba(255,255,255,0.4) 0%, rgba(0,0,0,0.1) 100%);
-}
-
-/* === 動畫關鍵影格 (加入光影變化) === */
-
-/* 使用更柔和的曲線 (ease-in-out 的變體)
-   時間稍微拉長到 0.8s 增加重量感
+/* === 拿掉 ::after 偽元素的陰影層 === 
+   這就是剛剛讓你覺得「醜」的原因，我們直接不要了，保持畫面純淨。
 */
+
+/* === 動畫設定：使用 Spring Physics (彈性物理) 曲線 === */
+
+/* 下一頁：右頁翻到左邊 */
 .anim-next-right {
-  animation: flipRightToLeft Soft 0.8s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
+  /* cubic-bezier(.4, 0, .2, 1) 是一種非常經典的「材質設計」運動曲線，乾淨俐落 */
+  animation: cleanFlipRightToLeft 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
+/* 上一頁：左頁翻到右邊 */
 .anim-prev-left {
-  animation: flipLeftToRight Soft 0.8s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
+  animation: cleanFlipLeftToRight 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
-/* 下一頁動畫：右翻左 */
-@keyframes flipRightToLeftSoft {
+@keyframes cleanFlipRightToLeft {
   0% { 
     transform: rotateY(0deg); 
-  }
-  /* 在翻到一半時，讓光影層顯示，模擬彎曲反光 */
-  40%, 60% {
-    box-shadow: -5px 0 20px rgba(0,0,0,0.2); /* 增加動態陰影 */
   }
   100% { 
     transform: rotateY(-180deg); 
-    background-color: #ddd; /* 背面稍微變暗 */
   }
 }
 
-/* 上一頁動畫：左翻右 */
-@keyframes flipLeftToRightSoft {
+@keyframes cleanFlipLeftToRight {
   0% { 
     transform: rotateY(0deg); 
   }
-  40%, 60% {
-    box-shadow: 5px 0 20px rgba(0,0,0,0.2);
-  }
   100% { 
     transform: rotateY(180deg); 
-    background-color: #ddd;
   }
-}
-
-/* 🔥 關鍵：獨立控制光影層的透明度動畫 */
-.anim-next-right::after,
-.anim-prev-left::after {
-  animation: paperHighlight 0.8s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
-}
-
-@keyframes paperHighlight {
-  0% { opacity: 0; }
-  /* 在翻到中間時，光影最明顯 */
-  40% { opacity: 1; }
-  60% { opacity: 1; }
-  100% { opacity: 0; }
 }

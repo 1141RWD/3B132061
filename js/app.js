@@ -416,10 +416,10 @@ async function handlePageFlip(direction) {
       rightPaper.style.backgroundImage = `url(${dataUrl})`;
     }
 
-    // 3. 重置動畫 Class
+    // 3. 重置動畫 Class (確保移除的是正確的 class 名稱)
     flipLayer.classList.remove("active");
     leftPaper.classList.remove("anim-prev-left");
-    rightPaper.classList.remove("anim-next-right");
+    rightPaper.classList.remove("anim-next-right"); // 確認這裡是 anim-next-right
     
     // 強制重繪
     void flipLayer.offsetWidth;
@@ -428,36 +428,26 @@ async function handlePageFlip(direction) {
     flipLayer.classList.add("active");
 
     if (direction === 'next') {
-      // === 下一頁 ===
-      // A. 先偷偷把底下的內容換成「新的一頁」
       updatePageData(direction);
-
-      // B. 視覺戲法：
-      // - 左邊的舊截圖 (leftPaper) 保持不動，擋住新的左頁
-      // - 右邊的舊截圖 (rightPaper) 開始往左翻 (0 -> -180度)
-      // - 當右頁翻過去後 (超過90度)，backface-hidden 會讓它消失，露出底下「新的右頁」
-      // - 同時原本不動的左截圖，因為是在 flipLayer 上，等動畫結束隱藏 flipLayer 後，就會露出底下「新的左頁」
       
-      rightPaper.classList.add("anim-next-right");
+      // 加入動畫 class
+      rightPaper.classList.add("anim-next-right"); // 確認這裡是 anim-next-right
       
     } else {
-      // === 上一頁 ===
       updatePageData(direction);
       
-      // 視覺戲法：
-      // - 右邊的舊截圖保持不動
-      // - 左邊的舊截圖往右翻 (0 -> 180度)
-      leftPaper.classList.add("anim-prev-left");
+      // 加入動畫 class
+      leftPaper.classList.add("anim-prev-left"); // 確認這裡是 anim-prev-left
     }
 
-    // 5. 動畫結束後清理 (時間配合 CSS 的 0.7s)
+    // 5. 動畫結束後清理
     setTimeout(() => {
       flipLayer.classList.remove("active");
       leftPaper.classList.remove("anim-prev-left");
       rightPaper.classList.remove("anim-next-right");
       leftPaper.style.backgroundImage = "";
       rightPaper.style.backgroundImage = "";
-    }, 700);
+    }, 800); // 時間配合 CSS 的 0.8s
 
   } catch (err) {
     console.warn("翻頁動畫失敗，直接切換", err);
