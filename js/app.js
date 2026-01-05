@@ -301,13 +301,24 @@ const views = document.querySelectorAll(".view");
 tabButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     const target = btn.dataset.target;
+
     tabButtons.forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
-    views.forEach((v) => v.classList.toggle("active", v.id === target));
 
-    if (target === "album-view") renderAlbum(currentPageIndex);
-    if (target === "list-view") applyListFilter();
-    if (target === "stats-view") renderStats();
+    views.forEach((v) => {
+      v.classList.toggle("active", v.id === target);
+    });
+
+    if (target === "album-view") {
+      renderAlbum(currentPageIndex);
+    } 
+    else if (target === "list-view") {
+      applyListFilter();
+    } 
+    else if (target === "stats-view") {
+      renderStats();
+      renderAchievements();
+    }
   });
 });
 
