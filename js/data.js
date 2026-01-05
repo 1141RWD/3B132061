@@ -5,7 +5,7 @@ const STORAGE_KEY = "idol_collection_cards_github_demo";
 const SLOTS_PER_PAGE = 8;
 
 // 初始假資料（第一頁 4 張 TWICE）
-const defaultCards = [
+const INITIAL_CARDS = [
     {
       id: 1,
       name: "Mina 小卡",
@@ -58,7 +58,15 @@ let pendingSlotForNewCard = null;
 
 // 🔹 GitHub 版本：不要讀 localStorage，永遠用程式裡的 defaultCards
 function loadCards() {
-  cards = [...defaultCards];
+  const raw = localStorage.getItem("cards");
+
+  if (raw) {
+    cards = JSON.parse(raw);
+  } else {
+    // 🔥 第一次進來：放初始示範資料
+    cards = [...INITIAL_CARDS];
+    saveCards();
+  }
 }
 
 // 🔹 GitHub 版本：先不存資料，重整就回到預設
