@@ -1021,241 +1021,6 @@ textarea:focus {
   }
 }
 
-/* 套用不同方向 */
-.album.flip-next {
-  animation: flip-next 520ms cubic-bezier(.2,.8,.2,1);
-}
-
-.album.flip-prev {
-  animation: flip-prev 520ms cubic-bezier(.2,.8,.2,1);
-}
-
-/* 減少暈眩（可選） */
-@media (prefers-reduced-motion: reduce) {
-  .album.flip-next,
-  .album.flip-prev {
-    animation: none;
-  }
-}
-
-/* ===== 真正翻書（右頁翻到左頁） ===== */
-.album{
-  perspective: 1800px;
-  transform-style: preserve-3d;
-}
-
-/* 疊層：平常不擋點擊 */
-.page-flip-layer{
-  position:absolute;
-  inset:0;
-  pointer-events:none;
-  z-index: 9;
-}
-
-/* 右半頁紙張（下一頁翻） */
-.page-flip-paper{
-  position:absolute;
-  top:0;
-  right:0;
-  width:50%;
-  height:100%;
-  border-radius: 24px;
-
-  will-change: transform, opacity;
-  transform-origin: left center;   /* 從中線翻 */
-  transform: translateZ(0) rotateY(0deg); /* 逼 GPU */
-  backface-visibility: hidden;
-
-  background-repeat:no-repeat;
-  background-size: 200% 100%;
-  background-position: 100% 0;     /* 只顯示右半快照 */
-
-  box-shadow: -10px 0 22px rgba(0,0,0,0.08);
-  opacity:0;
-}
-
-/* 左半頁紙張（上一頁翻） */
-.page-flip-paper.is-prev{
-  left:0;
-  right:auto;
-  transform-origin: right center;
-  background-position: 0 0;        /* 只顯示左半快照 */
-  box-shadow: 10px 0 22px rgba(0,0,0,0.08);
-}
-
-/* 翻頁陰影（跟著翻） */
-.page-flip-shadow{
-  position:absolute;
-  top:0;
-  right:0;
-  width:50%;
-  height:100%;
-  border-radius: 24px;
-  opacity:0;
-  background: linear-gradient(to left, rgba(0,0,0,0.22), rgba(0,0,0,0));
-  will-change: opacity;
-}
-.page-flip-shadow.is-prev{
-  left:0;
-  right:auto;
-  background: linear-gradient(to right, rgba(0,0,0,0.22), rgba(0,0,0,0));
-}
-
-/* 觸發：下一頁 */
-.album.is-bookflip-next .page-flip-paper{
-  opacity:1;
-  animation: bookflip-next 720ms cubic-bezier(.2,.85,.2,1) forwards;
-}
-.album.is-bookflip-next .page-flip-shadow{
-  opacity:1;
-  animation: bookflip-shadow 720ms cubic-bezier(.2,.85,.2,1) forwards;
-}
-
-/* 觸發：上一頁 */
-.album.is-bookflip-prev .page-flip-paper{
-  opacity:1;
-  animation: bookflip-prev 720ms cubic-bezier(.2,.85,.2,1) forwards;
-}
-.album.is-bookflip-prev .page-flip-shadow{
-  opacity:1;
-  animation: bookflip-shadow 720ms cubic-bezier(.2,.85,.2,1) forwards;
-}
-
-/* 真翻頁角度（像翻紙） */
-@keyframes bookflip-next{
-  0%   { transform: translateZ(0) rotateY(0deg); }
-  18%  { transform: translateZ(0) rotateY(-25deg); }
-  45%  { transform: translateZ(0) rotateY(-85deg); }
-  100% { transform: translateZ(0) rotateY(-168deg); }
-}
-
-@keyframes bookflip-prev{
-  0%   { transform: translateZ(0) rotateY(0deg); }
-  18%  { transform: translateZ(0) rotateY(25deg); }
-  45%  { transform: translateZ(0) rotateY(85deg); }
-  100% { transform: translateZ(0) rotateY(168deg); }
-}
-
-@keyframes bookflip-shadow{
-  0%   { opacity: 0.06; }
-  35%  { opacity: 0.26; }
-  100% { opacity: 0.0; }
-}
-
-/* 動畫中不要連點 */
-.album.is-bookflip-next,
-.album.is-bookflip-prev{
-  pointer-events:none;
-}
-
-/* ===== 紙張彎曲感：高光 + 內陰影（不靠 filter，效能好） ===== */
-.page-flip-paper{
-  position:absolute;
-  overflow:hidden; /* 讓內層高光不超出去 */
-}
-
-/* 1) 紙張高光：靠書脊那條亮（像紙反光） */
-.page-flip-paper::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  pointer-events:none;
-
-  /* 下一頁：書脊在左，亮在左；上一頁會在右（下面會覆蓋） */
-  background: linear-gradient(
-    90deg,
-    rgba(255,255,255,0.55) 0%,
-    rgba(255,255,255,0.22) 10%,
-    rgba(255,255,255,0.05) 22%,
-    rgba(255,255,255,0.00) 40%
-  );
-
-  opacity: 0.0;
-  mix-blend-mode: screen;
-  transition: opacity 200ms ease;
-}
-
-/* 2) 內陰影：紙面彎曲的暗部（中間最暗、邊緣較淡） */
-.page-flip-paper::after{
-  content:"";
-  position:absolute;
-  inset:-2px;
-  pointer-events:none;
-
-  background: radial-gradient(
-    70% 110% at 30% 50%,
-    rgba(0,0,0,0.28) 0%,
-    rgba(0,0,0,0.16) 22%,
-    rgba(0,0,0,0.06) 44%,
-    rgba(0,0,0,0.00) 70%
-  );
-
-  opacity: 0.0;
-  mix-blend-mode: multiply;
-  transition: opacity 200ms ease;
-}
-
-/* 翻頁啟動時讓高光/陰影出現 */
-.album.is-bookflip-next .page-flip-paper::before,
-.album.is-bookflip-prev .page-flip-paper::before{
-  opacity: 1;
-}
-.album.is-bookflip-next .page-flip-paper::after,
-.album.is-bookflip-prev .page-flip-paper::after{
-  opacity: 1;
-}
-
-/* 上一頁：書脊在右，所以高光要反過來 */
-.page-flip-paper.is-prev::before{
-  background: linear-gradient(
-    270deg,
-    rgba(255,255,255,0.55) 0%,
-    rgba(255,255,255,0.22) 10%,
-    rgba(255,255,255,0.05) 22%,
-    rgba(255,255,255,0.00) 40%
-  );
-}
-
-/* 上一頁：陰影中心也反一下（讓暗部更像往右彎） */
-.page-flip-paper.is-prev::after{
-  background: radial-gradient(
-    70% 110% at 70% 50%,
-    rgba(0,0,0,0.28) 0%,
-    rgba(0,0,0,0.16) 22%,
-    rgba(0,0,0,0.06) 44%,
-    rgba(0,0,0,0.00) 70%
-  );
-}
-
-/* 紙張邊：一條很細的亮邊，像紙厚度 */
-.page-flip-paper{
-  border-left: 1px solid rgba(255, 255, 255, 0.55);
-}
-.page-flip-paper.is-prev{
-  border-left: none;
-  border-right: 1px solid rgba(255, 255, 255, 0.55);
-}
-
-/* 字型 */
-
-html, body {
-  font-family: var(--font-ui);
-}
-
-/* 讓中文更順眼：字距/行高微調（很有感） */
-body {
-  letter-spacing: 0.2px;
-  line-height: 1.45;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: geometricPrecision;
-}
-
-h1, h2, h3, .section-header h2, .brand h1 {
-  font-family: var(--font-ui);
-  font-weight: 800;
-  letter-spacing: 0.4px;
-}
-
 /* === 首頁封面畫面 === */
 
 .cover-screen {
@@ -1508,12 +1273,45 @@ h1, h2, h3, .section-header h2, .brand h1 {
   }
 }
 
-/* === 翻頁動畫專用 CSS (加強版) === */
+@keyframes flipFromLeft {
+  0% {
+    transform: rotateY(-110deg);
+    opacity: 0;
+  }
+  100% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+}
+
+/* =========================================
+   修正後的字型與翻頁動畫 (請放在 style.css 最下方)
+   ========================================= */
+
+/* 字型設定 (原本夾在被刪除的區塊中，補回來) */
+html, body {
+  font-family: var(--font-ui);
+}
+
+body {
+  letter-spacing: 0.2px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+h1, h2, h3, .section-header h2, .brand h1 {
+  font-family: var(--font-ui);
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+/* === 翻頁動畫專用 CSS (最終修正版) === */
 
 .album-wrapper {
-  perspective: 2000px; /* 增加景深距離，讓 3D 效果更自然 */
+  perspective: 2000px;
   position: relative;
-  overflow: visible;   /* 暫時改成 visible 以免動畫被切掉，測試完可改回 hidden */
+  overflow: visible; /* 暫時設為 visible 確保動畫不被切掉 */
 }
 
 .page-flip-layer {
@@ -1522,11 +1320,11 @@ h1, h2, h3, .section-header h2, .brand h1 {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 999; /* 確保在最上層 */
+  z-index: 999; 
   pointer-events: none;
-  display: none; /* 平常隱藏 */
+  display: none; 
   transform-style: preserve-3d;
-  transform-origin: 0% 50%; /* 設定旋轉軸在「最左邊」(書背) */
+  transform-origin: 0% 50%; /* 書背在左邊 */
 }
 
 .page-flip-layer.active {
@@ -1534,25 +1332,34 @@ h1, h2, h3, .section-header h2, .brand h1 {
 }
 
 .page-flip-paper {
-  width: 100%;
+  width: 100% !important;  /* 強制全寬 */
   height: 100%;
-  background-color: #fdfdfd; /* 強制設定白底 (重要！不然會透明) */
+  
+  /* 確保紙張是不透明的白色 */
+  background-color: #ffffff !important; 
+  opacity: 1 !important;
+  
   background-size: cover;
   background-position: center;
-  /* 加一點陰影讓它像紙張浮起來 */
-  box-shadow: 5px 0 15px rgba(0,0,0,0.1); 
+  border-radius: 24px; /* 配合你的 .album 圓角 */
+  
+  /* 加強陰影效果 */
+  box-shadow: 5px 0 25px rgba(0,0,0,0.15); 
   backface-visibility: hidden;
-  border-radius: 8px;
+  
+  /* 確保位置正確 */
+  left: 0 !important;
+  right: auto !important;
 }
 
-/* 下一頁動畫：這張舊紙往左翻過去 */
+/* 下一頁動畫：從 0度 翻到 -110度 */
 .anim-flip-next {
-  animation: flipToLeft 1.2s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
+  animation: flipToLeft 1.0s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
 }
 
-/* 上一頁動畫：從左邊翻回來蓋住 */
+/* 上一頁動畫：從 -110度 翻回 0度 */
 .anim-flip-prev {
-  animation: flipFromLeft 1.2s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
+  animation: flipFromLeft 1.0s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
 }
 
 @keyframes flipToLeft {
@@ -1561,8 +1368,8 @@ h1, h2, h3, .section-header h2, .brand h1 {
     opacity: 1;
   }
   100% {
-    transform: rotateY(-110deg); /* 翻過去的角度 */
-    opacity: 0; /* 翻到底變透明 */
+    transform: rotateY(-110deg);
+    opacity: 0; /* 翻到底後消失 */
   }
 }
 
