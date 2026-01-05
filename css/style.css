@@ -1508,51 +1508,51 @@ h1, h2, h3, .section-header h2, .brand h1 {
   }
 }
 
-/* === 翻頁動畫專用 CSS === */
+/* === 翻頁動畫專用 CSS (加強版) === */
 
-/* 設定 3D 透視感，讓翻頁看起來立體 */
 .album-wrapper {
-  perspective: 1500px; /* 數值越小，立體感越強 */
-  overflow: hidden;    /* 避免翻出去的頁面跑出框框 */
+  perspective: 2000px; /* 增加景深距離，讓 3D 效果更自然 */
+  position: relative;
+  overflow: visible;   /* 暫時改成 visible 以免動畫被切掉，測試完可改回 hidden */
 }
 
-/* 翻頁層：預設隱藏，動畫時顯示 */
 .page-flip-layer {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 50; /* 要蓋過下面的卡片 */
-  pointer-events: none; /* 讓點擊穿透，避免擋住操作 */
+  z-index: 999; /* 確保在最上層 */
+  pointer-events: none;
   display: none; /* 平常隱藏 */
   transform-style: preserve-3d;
-  transform-origin: left center; /* 重點：從左邊像書背一樣翻 */
+  transform-origin: 0% 50%; /* 設定旋轉軸在「最左邊」(書背) */
 }
 
 .page-flip-layer.active {
   display: block;
 }
 
-/* 模擬的那張紙 */
 .page-flip-paper {
   width: 100%;
   height: 100%;
-  background-color: #fff; /* 或配合你的背景色 */
+  background-color: #fdfdfd; /* 強制設定白底 (重要！不然會透明) */
   background-size: cover;
   background-position: center;
-  backface-visibility: hidden; /* 翻過去後背面看不到 */
-  border-radius: 8px; /* 配合你原本的圓角 */
+  /* 加一點陰影讓它像紙張浮起來 */
+  box-shadow: 5px 0 15px rgba(0,0,0,0.1); 
+  backface-visibility: hidden;
+  border-radius: 8px;
 }
 
-/* 下一頁動畫：從 0度 翻到 -90度(或更多) */
+/* 下一頁動畫：這張舊紙往左翻過去 */
 .anim-flip-next {
-  animation: flipToLeft 0.8s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
+  animation: flipToLeft 1.2s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
 }
 
-/* 上一頁動畫：從 -90度 翻回來 0度 */
+/* 上一頁動畫：從左邊翻回來蓋住 */
 .anim-flip-prev {
-  animation: flipFromLeft 0.8s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
+  animation: flipFromLeft 1.2s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
 }
 
 @keyframes flipToLeft {
@@ -1560,22 +1560,16 @@ h1, h2, h3, .section-header h2, .brand h1 {
     transform: rotateY(0deg);
     opacity: 1;
   }
-  50% {
-    opacity: 0.8; /* 翻到一半稍微變暗 */
-  }
   100% {
-    transform: rotateY(-120deg); /* 往左翻超過 90 度 */
-    opacity: 0;
+    transform: rotateY(-110deg); /* 翻過去的角度 */
+    opacity: 0; /* 翻到底變透明 */
   }
 }
 
 @keyframes flipFromLeft {
   0% {
-    transform: rotateY(-120deg);
+    transform: rotateY(-110deg);
     opacity: 0;
-  }
-  50% {
-    opacity: 0.8;
   }
   100% {
     transform: rotateY(0deg);

@@ -389,72 +389,70 @@ async function handlePageFlip(direction) {
   const flipLayer = document.getElementById("pageFlipLayer");
   const flipPaper = document.getElementById("pageFlipPaper");
   
-  // 防呆：如果元素抓不到，就直接切換資料就好
-  if (!albumGrid || !flipLayer || !flipPaper || !window.html2canvas) {
-    console.warn("缺少翻頁動畫元素，執行普通換頁");
+  if (!albumGrid || !flipLayer || !flipPaper) {
     updatePageData(direction);
     return;
   }
 
-  // 1. 【截圖】把現在這一頁拍下來
-  // scale: 2 可以讓截圖比較清晰
-  try {
-    const canvas = await html2canvas(albumGrid, { 
-      scale: 2, 
-      backgroundColor: null // 透明背景
-    });
-    
-    // 2. 【設定假頁面】把截圖貼到翻頁層
-    flipPaper.style.backgroundImage = `url(${canvas.toDataURL()})`;
-    flipLayer.classList.remove("anim-flip-next", "anim-flip-prev");
-    
-    // 3. 【判斷方向與動畫邏輯】
-    if (direction === 'next') {
-      // === 下一頁邏輯 ===
-      // A. 顯示假頁面 (它是舊內容的截圖)，蓋在最上面
-      flipLayer.classList.add("active");
-      
-      // B. 真正的底部換成「新的一頁」
-      updatePageData(direction); 
-      
-      // C. 播放動畫：假頁面往左翻走，露出底下的新頁面
-      flipLayer.classList.add("anim-flip-next");
+  // 1. 為了讓動畫明顯，我們先鎖定寬高，避免跑版
+  flipLayer.style.width = albumGrid.offsetWidth + "px";
+  flipLayer.style.height = albumGrid.offsetHeight + "px";
 
-    } else {
-      // === 上一頁邏輯 (比較特別) ===
-      // 上一頁的邏輯是：新的頁面從左邊「蓋回來」
-      
-      // A. 先切換數據，算出「上一頁」長怎樣
-      // 但我們不能馬上顯示，所以先拍這張「上一頁」
-      // 這邊邏輯比較複雜，為了簡化，我們用簡單版視覺詐欺：
-      
-      // 簡單版策略：
-      // 1. 截圖「目前頁面」(舊)，當作底圖 (這裡比較難，我們先做單純的動畫)
-      // 為了效果順暢，上一頁我們做反向動畫即可：
-      
-      // 正確的上一頁流暢做法：
-      // 1. 先把數據換成上一頁
-      updatePageData(direction);
-      // 2. 等 render 完，這時候畫面上是「上一頁」
-      // 3. 但我們想要「看起來像是翻過來」，這需要比較高階的操作。
-      // 為了不讓程式碼太複雜，我們用「淡入翻轉」效果：
-      
-      flipLayer.classList.add("active");
-      flipLayer.classList.add("anim-flip-prev");
-      
-      // 因為上一頁動畫是從「透明」變「實體」，所以不需要預先貼圖
-      // 只需要讓它蓋在上面跑動畫即可 (這裡直接用新頁面的截圖會更像，但需要兩次 render)
-      // 這裡採用簡化版：直接翻。
+  try {
+    // 2. 截圖 (如果是本地檔案 file:// 有可能失敗，失敗就用白底)
+    let dataUrl = "";
+    if (window.html2canvas) {
+        const canvas = await html2canvas(albumGrid, { 
+          scale: 1.5, // 解析度稍微降低一點提升速度
+          backgroundColor: "#ffffff", // 強制白底
+          useCORS: true, // 嘗試解決圖片跨域問題
+          logging: false
+        });
+        dataUrl = canvas.toDataURL();
     }
 
-    // 4. 【清理】動畫結束後 (0.8秒)，隱藏翻頁層
+    // 3. 設定翻頁層圖片
+    if (dataUrl) {
+      flipPaper.style.backgroundImage = `url(${dataUrl})`;
+    } else {
+      flipPaper.style.backgroundImage = "none";
+      flipPaper.style.backgroundColor = "#fff"; // 截圖失敗至少要是白紙
+    }
+    
+    // 重置動畫 class
+    flipLayer.classList.remove("active", "anim-flip-next", "anim-flip-prev");
+    
+    // ★ 關鍵技巧：強制瀏覽器 Reflow (重繪)，讓動畫重置生效
+    void flipLayer.offsetWidth; 
+
+    // 4. 開始動畫邏輯
+    if (direction === 'next') {
+      // 下一頁：
+      // (1) 顯示這張舊截圖蓋在上面
+      flipLayer.classList.add("active");
+      flipLayer.classList.add("anim-flip-next");
+
+      // (2) 底下偷偷換成新的一頁
+      updatePageData(direction); 
+      
+    } else {
+      // 上一頁：
+      // (1) 先換成新的一頁 (也就是上一頁的內容)
+      updatePageData(direction);
+
+      // (2) 讓翻頁層從左邊蓋回來 (這裡比較難完美模擬，先求有動感)
+      flipLayer.classList.add("active");
+      flipLayer.classList.add("anim-flip-prev");
+    }
+
+    // 5. 動畫結束後清理
     setTimeout(() => {
       flipLayer.classList.remove("active", "anim-flip-next", "anim-flip-prev");
       flipPaper.style.backgroundImage = "";
-    }, 800); // 這裡的時間要跟 CSS animation 時間一樣
+    }, 1200); // 時間要跟 CSS 的 1.2s 一樣
 
   } catch (err) {
-    console.error("截圖失敗:", err);
+    console.warn("動畫失敗，直接換頁", err);
     updatePageData(direction);
   }
 }
