@@ -1,12 +1,9 @@
 // js/app.js
-// ===== 防呆：避免因為漏載 stats/achievement 的檔案就整個炸掉 =====
-window.renderStats = window.renderStats || function () {
-  console.warn("[renderStats] missing: 請確認 stats 函式是否有載入或已被刪除");
-};
 
-window.renderAchievements = window.renderAchievements || function () {
-  console.warn("[renderAchievements] missing: 請確認 achievements 函式是否有載入或已被刪除");
-};
+// ===== 防呆：確保 UI 函式存在 =====
+window.renderStats = window.renderStats || function () { console.warn("renderStats missing"); };
+// 注意：這裡移除了 window.renderAchievements 的防呆，因為我們會在 ui.js 定義它，
+// 且不希望 app.js 後面的舊代碼覆蓋它。
 
 window.getToastSeenSet = window.getToastSeenSet || function () {
   try {
@@ -66,9 +63,8 @@ window.addEventListener("popstate", (event) => {
 });
 
 // ===============================
-// Smart Add：檔名/網址 → 推論團體/成員/類別/名稱
+// Smart Add 邏輯 (保持不變)
 // ===============================
-
 const MEMBER_DB = {
   TWICE: ["Mina", "Momo", "Nayeon", "Sana", "Tzuyu", "Jihyo", "Jeongyeon", "Dahyun", "Chaeyoung"],
   MAMAMOO: ["Solar", "Moonbyul", "Wheein", "Hwasa"],
@@ -85,15 +81,12 @@ const ALIAS_MAP = (() => {
   map.set("twice", { group: "TWICE", member: "" });
   map.set("mamamoo", { group: "MAMAMOO", member: "" });
   map.set("viviz", { group: "VIVIZ", member: "" });
-
-  // 類別關鍵字
   map.set("badge", { category: "徽章" });
   map.set("徽章", { category: "徽章" });
   map.set("album", { category: "專輯" });
   map.set("專輯", { category: "專輯" });
   map.set("dvd", { category: "周邊" });
   map.set("周邊", { category: "周邊" });
-
   return map;
 })();
 
@@ -112,25 +105,19 @@ function extractTokensFromRef(ref) {
 function prettifyTitleFromTokens(tokens, removeSet) {
   const keep = tokens.filter(t => t && !removeSet.has(t));
   if (keep.length === 0) return "";
-  // 把 feel_special -> Feel Special
   const joined = keep.join(" ");
-  return joined
-    .split(/\s+/)
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
+  return joined.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
 function inferFromText(textRef) {
   const tokens = extractTokensFromRef(textRef);
-
   let group = "";
   let member = "";
-  let category = ""; // 小卡/專輯/周邊/徽章
+  let category = "";
 
   for (const t of tokens) {
     const hit = ALIAS_MAP.get(t);
     if (!hit) continue;
-
     if (hit.member && !member) {
       member = hit.member;
       group = hit.group;
@@ -141,31 +128,19 @@ function inferFromText(textRef) {
 
   if (!category) category = "小卡";
 
-  // 自動名稱：成員優先，其次團體+title
-  const removeSet = new Set([
-    "twice","mamamoo","viviz",
-    "badge","album","dvd",
-    "photocard","card","pc"
-  ]);
-  // 也把 member token 移除，避免重複
+  const removeSet = new Set(["twice","mamamoo","viviz","badge","album","dvd","photocard","card","pc"]);
   if (member) removeSet.add(member.toLowerCase());
 
   const titlePart = prettifyTitleFromTokens(tokens, removeSet);
 
   let name = "";
-  if (member) {
-    name = `${member} ${category}`;
-  } else if (titlePart) {
-    name = `${titlePart} ${category}`;
-  } else if (group) {
-    // DVD 常見想要顯示團體
+  if (member) name = `${member} ${category}`;
+  else if (titlePart) name = `${titlePart} ${category}`;
+  else if (group) {
     if (category === "周邊") name = `${group} 周邊`;
     else name = `${group} ${category}`;
-  } else {
-    name = `${category}`;
-  }
+  } else name = `${category}`;
 
-  // 如果 titlePart 很像 Lights / Feel Special 且類別周邊，補 DVD 字樣
   if (category === "周邊" && tokens.includes("dvd") && !/dvd/i.test(name)) {
     name = name.replace(/周邊$/,"DVD");
   }
@@ -173,11 +148,9 @@ function inferFromText(textRef) {
   return { group, member, category, name };
 }
 
-// ===== Smart Add UI helpers =====
 function setPreviewImage(urlOrDataUrl) {
   const preview = document.getElementById("add-image-preview");
   if (!preview) return;
-
   if (!urlOrDataUrl) {
     preview.classList.add("is-empty");
     preview.style.backgroundImage = "";
@@ -198,19 +171,15 @@ function setSmartStatus(text, type = "") {
   el.textContent = text;
 }
 
-// ✅ 你 console 報錯的元兇：一定要有這個
 function resetSmartAddUI() {
   const form = document.getElementById("add-card-form");
   if (form) form.reset();
-
   const urlInput = document.getElementById("add-image");
   const fileInput = document.getElementById("add-image-file");
   if (fileInput) fileInput.value = "";
   if (urlInput) urlInput.value = "";
-
   setPreviewImage("");
   setSmartStatus("貼上圖片 / 上傳檔案後會自動填入「團體 / 成員 / 類別 / 名稱」");
-
   const adv = document.getElementById("advanced-area");
   const btn = document.getElementById("toggle-advanced");
   if (adv) adv.classList.add("hidden");
@@ -227,12 +196,7 @@ function wireSmartAddModal() {
   const toggleBtn = document.getElementById("toggle-advanced");
   const advArea = document.getElementById("advanced-area");
 
-  if (!urlInput || !fileInput || !nameInput || !groupInput || !memberInput || !catSelect) {
-    console.warn("[SmartAdd] missing elements, check IDs in HTML.");
-    return;
-  }
-
-  // 避免重複綁定：用 dataset 記錄
+  if (!urlInput) return;
   if (urlInput.dataset.bound === "1") return;
   urlInput.dataset.bound = "1";
 
@@ -245,22 +209,14 @@ function wireSmartAddModal() {
 
   function applyInference(hintText, previewUrl = "") {
     if (previewUrl) setPreviewImage(previewUrl);
-
     const r = inferFromText(hintText);
-
-    // 類別：如果使用者還沒改過就自動選
     if (catSelect && (!catSelect.dataset.touched || catSelect.dataset.touched !== "1")) {
       catSelect.value = r.category || "小卡";
     }
-
-    // 團體 / 成員：只在空白時填入
     if (r.group && !groupInput.value.trim()) groupInput.value = r.group;
     if (r.member && !memberInput.value.trim()) memberInput.value = r.member;
-
-    // 名稱：空白才帶入
     if (!nameInput.value.trim() && r.name) nameInput.value = r.name;
 
-    // 狀態提示
     if (r.member && r.group) {
       setSmartStatus(`已判斷：${r.group} · ${r.member}（${catSelect.value}）`, "ok");
     } else if (r.group) {
@@ -270,17 +226,16 @@ function wireSmartAddModal() {
     }
   }
 
-  // 類別被使用者手動改過就不要再自動覆蓋
-  catSelect.addEventListener("change", () => {
-    catSelect.dataset.touched = "1";
-    // 如果名稱空白，順便用目前成員更新一次
-    if (!nameInput.value.trim()) {
-      const member = memberInput.value.trim();
-      if (member) nameInput.value = `${member} ${catSelect.value}`;
-    }
-  });
+  if (catSelect) {
+    catSelect.addEventListener("change", () => {
+      catSelect.dataset.touched = "1";
+      if (!nameInput.value.trim()) {
+        const member = memberInput.value.trim();
+        if (member) nameInput.value = `${member} ${catSelect.value}`;
+      }
+    });
+  }
 
-  // 貼網址：預覽 + 推論（注意：有些站會擋外連，預覽看不到是正常的）
   urlInput.addEventListener("input", () => {
     const url = urlInput.value.trim();
     if (!url) {
@@ -291,61 +246,49 @@ function wireSmartAddModal() {
     applyInference(url, url);
   });
 
-  // 上傳圖片：用檔名推論 + 用 DataURL 做預覽
   fileInput.addEventListener("change", () => {
     const file = fileInput.files && fileInput.files[0];
     if (!file) return;
-
-    // 先用檔名做推論（最穩）
     applyInference(file.name);
-
     const reader = new FileReader();
     reader.onload = () => {
-      const dataUrl = reader.result;
-      // ✅ 預覽用 DataURL 一定能顯示
-      setPreviewImage(dataUrl);
-      // ✅ 也把 add-image 塞入 DataURL，讓你送出後能顯示圖片（你如果不想刷新保留，就之後再改存取策略）
-      urlInput.value = dataUrl;
+      setPreviewImage(reader.result);
+      urlInput.value = reader.result;
     };
     reader.readAsDataURL(file);
   });
 }
 
 // ===============================
-// ===== 以下是原本主程式：Tabs/Modal/新增 =====
+// 主程式：Tabs / Modal / 新增 / 翻頁
 // ===============================
 
 let currentPageIndex = 0;
+let pendingSlotForNewCard = null; // 修正變數 scope 問題
 
-// Tabs
+// 1. Tabs 切換
 const tabButtons = document.querySelectorAll(".tab-button");
 const views = document.querySelectorAll(".view");
 
 tabButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     const target = btn.dataset.target;
-
     tabButtons.forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
-
-    views.forEach((v) => {
-      v.classList.toggle("active", v.id === target);
-    });
+    views.forEach((v) => v.classList.toggle("active", v.id === target));
 
     if (target === "album-view") {
       renderAlbum(currentPageIndex);
-    } 
-    else if (target === "list-view") {
+    } else if (target === "list-view") {
       applyListFilter();
-    } 
-    else if (target === "stats-view") {
+    } else if (target === "stats-view") {
       renderStats();
-      renderAchievements();
+      if (typeof renderAchievements === 'function') renderAchievements();
     }
   });
 });
 
-// Modal 控制
+// 2. Modal 控制
 const cardModal = document.getElementById("card-modal");
 const addModal = document.getElementById("add-modal");
 
@@ -358,35 +301,44 @@ function closeAllModals() {
   if (addModal) addModal.classList.add("hidden");
 }
 
-// ✅ 被 ui.js 呼叫：開啟新增 Modal
 function openAddModal() {
-  resetSmartAddUI();           // ✅ 不會再報 resetSmartAddUI undefined
+  resetSmartAddUI();
   if (!addModal) return;
   addModal.classList.remove("hidden");
   const name = document.getElementById("add-name");
   if (name) name.focus();
 }
 
-// 卡片詳情（你原本應該已有）
 function openCardModal(cardId) {
   const card = findCardById(cardId);
   if (!card) return;
 
-  cardModal.dataset.cardId = card.id;
+  if (cardModal) cardModal.dataset.cardId = card.id;
 
   const imgDiv = document.getElementById("detail-image");
-  imgDiv.style.backgroundImage = card.imageUrl ? `url(${card.imageUrl})` : "";
+  if (imgDiv) imgDiv.style.backgroundImage = card.imageUrl ? `url(${card.imageUrl})` : "";
 
-  document.getElementById("detail-group-tag").textContent = card.group || "UNKNOWN";
-  document.getElementById("detail-category-pill").textContent = card.category || "未分類";
+  const gTag = document.getElementById("detail-group-tag");
+  if(gTag) gTag.textContent = card.group || "UNKNOWN";
+  
+  const cPill = document.getElementById("detail-category-pill");
+  if(cPill) cPill.textContent = card.category || "未分類";
 
   const favPill = document.getElementById("detail-fav-pill");
-  if (card.isFavorite) favPill.classList.remove("is-hidden");
-  else favPill.classList.add("is-hidden");
+  if (favPill) {
+    if (card.isFavorite) favPill.classList.remove("is-hidden");
+    else favPill.classList.add("is-hidden");
+  }
 
-  document.getElementById("detail-name").textContent = card.name;
-  document.getElementById("detail-subname").textContent = [card.group || "未設定團體", card.member || ""].filter(Boolean).join(" · ");
-  document.getElementById("detail-note").textContent = card.note?.trim() ? card.note : "這張收藏目前還沒有備註，可以之後再補上～";
+  const dName = document.getElementById("detail-name");
+  if(dName) dName.textContent = card.name;
+  
+  const dSub = document.getElementById("detail-subname");
+  if(dSub) dSub.textContent = [card.group || "未設定團體", card.member || ""].filter(Boolean).join(" · ");
+  
+  const dNote = document.getElementById("detail-note");
+  if(dNote) dNote.textContent = card.note?.trim() ? card.note : "這張收藏目前還沒有備註，可以之後再補上～";
+  
   document.getElementById("detail-series").textContent = card.series || "—";
   document.getElementById("detail-date").textContent = card.gotDate || "—";
   document.getElementById("detail-page").textContent = `第 ${card.pageIndex + 1} 頁`;
@@ -394,67 +346,116 @@ function openCardModal(cardId) {
   document.getElementById("detail-status").textContent = card.isFavorite ? "本命卡 · In Binder" : "一般收藏 · In Binder";
 
   const toggleBtn = document.getElementById("toggle-favorite-btn");
-  toggleBtn.textContent = card.isFavorite ? "取消本命標記" : "設為本命卡 💖";
+  if(toggleBtn) toggleBtn.textContent = card.isFavorite ? "取消本命標記" : "設為本命卡 💖";
+  // 重新綁定刪除/最愛按鈕
+  
+  // 刪除按鈕
+  const delBtn = document.getElementById("delete-card-btn");
+  if (delBtn) {
+    delBtn.onclick = () => {
+      if (confirm("確定要刪除這張收藏嗎？此動作無法復原。")) {
+         cards = cards.filter(c => c.id !== card.id);
+         saveCards();
+         closeAllModals();
+         renderAlbum(currentPageIndex);
+         applyListFilter();
+         renderStats();
+         showToast("已刪除收藏", {icon: "🗑️"});
+      }
+    };
+  }
+
+  // 最愛按鈕
+  if (toggleBtn) {
+    toggleBtn.onclick = () => {
+      card.isFavorite = !card.isFavorite;
+      saveCards();
+      openCardModal(card.id); // 刷新 Modal 狀態
+      renderAlbum(currentPageIndex); // 刷新背景
+      if (typeof renderAchievements === 'function') renderAchievements();
+    };
+  }
 
   cardModal.classList.remove("hidden");
 }
 
-// backdrop click
-[cardModal, addModal].forEach((modal) => {
-  if (!modal) return;
-  const backdrop = modal.querySelector(".modal-backdrop");
-  if (backdrop) backdrop.addEventListener("click", () => closeAllModals());
-});
+// 3. 翻頁按鈕事件監聽 (✅ 這是你原本漏掉的！)
+const prevPageBtn = document.getElementById("prev-page");
+const nextPageBtn = document.getElementById("next-page");
 
-// 新增表單提交
-document.getElementById("add-card-form").addEventListener("submit", (e) => {
-  e.preventDefault();
+if (prevPageBtn) {
+  prevPageBtn.addEventListener("click", () => {
+    if (currentPageIndex > 0) {
+      currentPageIndex--;
+      renderAlbum(currentPageIndex);
+    }
+  });
+}
 
-  const name = document.getElementById("add-name").value.trim();
-  if (!name) return;
+if (nextPageBtn) {
+  nextPageBtn.addEventListener("click", () => {
+    const maxPage = getMaxPageIndex();
+    // 允許翻到最後一頁的下一頁(空白頁)
+    if (currentPageIndex <= maxPage) {
+      currentPageIndex++;
+      renderAlbum(currentPageIndex);
+    }
+  });
+}
 
-  const group = document.getElementById("add-group").value.trim();
-  const member = document.getElementById("add-member").value.trim();
-  const category = document.getElementById("add-category").value;
-  const imageUrl = document.getElementById("add-image").value.trim();
-  const gotDate = document.getElementById("add-date")?.value || "";
-  const series = document.getElementById("add-series")?.value.trim() || "";
-  const note = document.getElementById("add-note").value.trim();
+// 4. 新增表單提交
+const addForm = document.getElementById("add-card-form");
+if (addForm) {
+  addForm.addEventListener("submit", (e) => {
+    e.preventDefault();
 
-  let target;
-  if (pendingSlotForNewCard) {
-    target = { pageIndex: pendingSlotForNewCard.pageIndex, slotIndex: pendingSlotForNewCard.slotIndex };
-  } else {
-    target = findFirstEmptySlot();
-  }
-  pendingSlotForNewCard = null;
+    const name = document.getElementById("add-name").value.trim();
+    if (!name) return;
 
-  const newCard = {
-    id: Date.now(),
-    name,
-    group,
-    member,
-    category,
-    series,
-    gotDate,
-    note,
-    imageUrl,
-    isFavorite: false,
-    pageIndex: target.pageIndex,
-    slotIndex: target.slotIndex,
-  };
+    const group = document.getElementById("add-group").value.trim();
+    const member = document.getElementById("add-member").value.trim();
+    const category = document.getElementById("add-category").value;
+    const imageUrl = document.getElementById("add-image").value.trim();
+    const gotDate = document.getElementById("add-date")?.value || "";
+    const series = document.getElementById("add-series")?.value.trim() || "";
+    const note = document.getElementById("add-note").value.trim();
 
-  cards.push(newCard);
-  saveCards();
-  closeAllModals();
+    let target;
+    if (pendingSlotForNewCard) {
+      target = { pageIndex: pendingSlotForNewCard.pageIndex, slotIndex: pendingSlotForNewCard.slotIndex };
+    } else {
+      target = findFirstEmptySlot();
+    }
+    pendingSlotForNewCard = null;
 
-  currentPageIndex = target.pageIndex;
-  renderAlbum(currentPageIndex);
-  applyListFilter();
-  renderStats();
-});
+    const newCard = {
+      id: Date.now(),
+      name,
+      group,
+      member,
+      category,
+      series,
+      gotDate,
+      note,
+      imageUrl,
+      isFavorite: false,
+      pageIndex: target.pageIndex,
+      slotIndex: target.slotIndex,
+    };
 
-// List filter
+    cards.push(newCard);
+    saveCards();
+    closeAllModals();
+
+    currentPageIndex = target.pageIndex;
+    renderAlbum(currentPageIndex);
+    applyListFilter();
+    renderStats();
+    if (typeof renderAchievements === 'function') renderAchievements();
+  });
+}
+
+// 5. 搜尋與篩選
 const searchInput = document.getElementById("search-input");
 const categoryFilter = document.getElementById("category-filter");
 const favoriteFilter = document.getElementById("favorite-filter");
@@ -473,12 +474,13 @@ function applyListFilter() {
   renderList(filter);
 }
 
+// 6. 統計 renderStats
+// ✅ 修正：移除不存在的 getAllCardsSafe()，改成直接用 cards
 function renderStats() {
-  const all = getAllCardsSafe();
+  const all = cards; // 直接用全域變數
   const total = all.length;
   const fav = all.filter(c => !!c.isFavorite).length;
 
-  // ===== 1) 收藏概況：塞到 #stats-summary =====
   const summaryEl = document.getElementById("stats-summary");
   if (summaryEl) {
     summaryEl.innerHTML = `
@@ -497,7 +499,7 @@ function renderStats() {
     `;
   }
 
-  // ===== 2) 依團體統計：塞到 #stats-by-group =====
+  // 依團體
   const groupMap = new Map();
   for (const c of all) {
     const g = (c.group || "UNKNOWN").trim() || "UNKNOWN";
@@ -528,7 +530,7 @@ function renderStats() {
     }
   }
 
-  // ===== 3) 依類別統計：塞到 #stats-by-category =====
+  // 依類別
   const catMap = new Map();
   for (const c of all) {
     const cat = (c.category || "未分類").trim() || "未分類";
@@ -560,33 +562,8 @@ function renderStats() {
   }
 }
 
-function renderAchievements() {
-  const all = getAllCardsSafe();
-  const total = all.length;
-  const fav = all.filter(c => !!c.isFavorite).length;
-
-  // 你可以之後再擴充條件，先讓它一定會顯示
-  const achievements = [
-    { id: "a1", title: "新手收藏家", desc: "收藏 1 張", ok: total >= 1 },
-    { id: "a2", title: "小有規模", desc: "收藏 10 張", ok: total >= 10 },
-    { id: "a3", title: "收藏控", desc: "收藏 50 張", ok: total >= 50 },
-    { id: "a4", title: "本命認證", desc: "本命卡 1 張", ok: fav >= 1 },
-    { id: "a5", title: "本命爆棚", desc: "本命卡 10 張", ok: fav >= 10 },
-  ];
-
-  const box = document.getElementById("achievement-list"); // ✅ 你的 HTML 是 achievement-list
-  if (!box) return;
-
-  box.innerHTML = achievements.map(a => `
-    <div class="ach-item ${a.ok ? "is-done" : ""}">
-      <div class="ach-item__left">
-        <div class="ach-item__title">${a.ok ? "🏆" : "🔒"} ${a.title}</div>
-        <div class="ach-item__desc">${a.desc}</div>
-      </div>
-      <div class="ach-item__right">${a.ok ? "已達成" : "未達成"}</div>
-    </div>
-  `).join("");
-}
+// 注意：這裡移除了 app.js 裡面的 renderAchievements，
+// 讓它完全依賴 ui.js 裡面的版本，避免衝突。
 
 // 初始化
 document.addEventListener("DOMContentLoaded", () => {
@@ -595,4 +572,5 @@ document.addEventListener("DOMContentLoaded", () => {
   renderAlbum(currentPageIndex);
   applyListFilter();
   renderStats();
+  if (typeof renderAchievements === 'function') renderAchievements();
 });
