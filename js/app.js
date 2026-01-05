@@ -293,15 +293,15 @@ function wireSmartAddModal() {
 // ===============================
 // ✅ 確保 window.cards 一定存在（給 stats/achievements/list 用）
 if (!window.cards) window.cards = [];
+// 讓本檔用的 cards 也指向同一份（避免兩份不同步）
 const cards = window.cards;
 
-// ✅ currentPageIndex 同步給 window（讓翻頁按鈕正常）
 let currentPageIndex = 0;
 window.currentPageIndex = currentPageIndex;
 
 function setCurrentPageIndex(v) {
   currentPageIndex = Math.max(0, v | 0);
-  window.currentPageIndex = currentPageIndex;
+  window.currentPageIndex = currentPageIndex; // ✅ 讓 ui.js 拿得到
 }
 
 // Tabs
