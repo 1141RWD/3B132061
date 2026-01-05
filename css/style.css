@@ -1306,12 +1306,13 @@ h1, h2, h3, .section-header h2, .brand h1 {
   letter-spacing: 0.4px;
 }
 
-/* === 翻頁動畫專用 CSS (最終修正版) === */
+/* === 翻頁動畫專用 CSS (書背中線翻頁版) === */
 
 .album-wrapper {
-  perspective: 2000px;
+  /* 透視感：數值越小，翻頁時「甩」出來的感覺越強烈 */
+  perspective: 2500px; 
   position: relative;
-  overflow: visible; /* 暫時設為 visible 確保動畫不被切掉 */
+  overflow: visible; 
 }
 
 .page-flip-layer {
@@ -1323,8 +1324,12 @@ h1, h2, h3, .section-header h2, .brand h1 {
   z-index: 999; 
   pointer-events: none;
   display: none; 
+  
   transform-style: preserve-3d;
-  transform-origin: 0% 50%; /* 書背在左邊 */
+  
+  /* 🔥 關鍵修改：將旋轉軸心設定在「正中間」 */
+  /* 這樣就會沿著你畫的那條中間線翻轉 */
+  transform-origin: center center; 
 }
 
 .page-flip-layer.active {
@@ -1332,34 +1337,32 @@ h1, h2, h3, .section-header h2, .brand h1 {
 }
 
 .page-flip-paper {
-  width: 100% !important;  /* 強制全寬 */
+  width: 100% !important;  
   height: 100%;
   
-  /* 確保紙張是不透明的白色 */
   background-color: #ffffff !important; 
   opacity: 1 !important;
   
   background-size: cover;
   background-position: center;
-  border-radius: 24px; /* 配合你的 .album 圓角 */
+  border-radius: 24px; 
   
-  /* 加強陰影效果 */
-  box-shadow: 5px 0 25px rgba(0,0,0,0.15); 
-  backface-visibility: hidden;
+  /* 陰影調整：讓中間翻起來時更有立體感 */
+  box-shadow: 0 0 25px rgba(0,0,0,0.15); 
+  backface-visibility: hidden; /* 背面看不到 */
   
-  /* 確保位置正確 */
   left: 0 !important;
   right: auto !important;
 }
 
-/* 下一頁動畫：從 0度 翻到 -110度 */
+/* 下一頁動畫：繞著中線，向左翻 (像是把右邊的頁面蓋到左邊) */
 .anim-flip-next {
-  animation: flipToLeft 1.0s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
+  animation: flipToLeft 0.9s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
 }
 
-/* 上一頁動畫：從 -110度 翻回 0度 */
+/* 上一頁動畫：繞著中線，向右翻 (像是把左邊的頁面翻開) */
 .anim-flip-prev {
-  animation: flipFromLeft 1.0s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
+  animation: flipFromLeft 0.9s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
 }
 
 @keyframes flipToLeft {
@@ -1368,18 +1371,20 @@ h1, h2, h3, .section-header h2, .brand h1 {
     opacity: 1;
   }
   100% {
-    transform: rotateY(-110deg);
-    opacity: 0; /* 翻到底後消失 */
+    /* 翻轉 -90度，看起來就像頁面立起來然後消失 */
+    /* 如果覺得翻得不夠過去，可以改 -100deg 或更多，但 -90deg 最像活頁翻動 */
+    transform: rotateY(-95deg); 
+    opacity: 0; 
   }
 }
 
 @keyframes flipFromLeft {
   0% {
-    transform: rotateY(-110deg);
+    transform: rotateY(-95deg); /* 從立著的狀態 */
     opacity: 0;
   }
   100% {
-    transform: rotateY(0deg);
+    transform: rotateY(0deg); /* 蓋回平放 */
     opacity: 1;
   }
 }
