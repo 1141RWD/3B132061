@@ -5,51 +5,51 @@ const STORAGE_KEY = "idol_collection_cards_github_demo";
 const SLOTS_PER_PAGE = 8;
 
 // 初始假資料（第一頁 4 張 TWICE）
-const INITIAL_CARDS = [
-  {
-    id: 1,
-    name: "Mina 小卡",
-    group: "TWICE",
-    member: "Mina",
-    category: "小卡",
-    imageUrl: "img/mina.jpg",
-    isFavorite: true,
-    pageIndex: 0,
-    slotIndex: 0
-  },
-  {
-    id: 2,
-    name: "Feel Special 專輯",
-    group: "TWICE",
-    member: "",
-    category: "專輯",
-    imageUrl: "img/twice-Feel_Special-album.jpg",
-    isFavorite: false,
-    pageIndex: 0,
-    slotIndex: 1
-  },
-  {
-    id: 3,
-    name: "TWICE 演唱會 DVD",
-    group: "TWICE",
-    member: "",
-    category: "周邊",
-    imageUrl: "img/twice-lights-dvd.jpg",
-    isFavorite: false,
-    pageIndex: 0,
-    slotIndex: 2
-  },
-  {
-    id: 4,
-    name: "Nayeon 徽章",
-    group: "TWICE",
-    member: "Nayeon",
-    category: "徽章",
-    imageUrl: "img/nayeon-badge.jpg",
-    isFavorite: false,
-    pageIndex: 0,
-    slotIndex: 3
-  }
+const defaultCards = [
+    {
+      id: 1,
+      name: "Mina 小卡",
+      group: "TWICE",
+      member: "Mina",
+      category: "小卡",
+      imageUrl: "img/mina.jpg",
+      isFavorite: true,
+      pageIndex: 0,
+      slotIndex: 0
+    },
+    {
+      id: 2,
+      name: "Feel Special 專輯",
+      group: "TWICE",
+      member: "",
+      category: "專輯",
+      imageUrl: "img/twice-Feel_Special-album.jpg",
+      isFavorite: false,
+      pageIndex: 0,
+      slotIndex: 1
+    },
+    {
+      id: 3,
+      name: "TWICE 演唱會 DVD",
+      group: "TWICE",
+      member: "",
+      category: "周邊",
+      imageUrl: "img/twice-lights-dvd.jpg",
+      isFavorite: false,
+      pageIndex: 0,
+      slotIndex: 2
+    },
+    {
+      id: 4,
+      name: "Nayeon 徽章",
+      group: "TWICE",
+      member: "Nayeon",
+      category: "徽章",
+      imageUrl: "img/nayeon-badge.jpg",
+      isFavorite: false,
+      pageIndex: 0,
+      slotIndex: 3
+    }
 ];
 
 let cards = [];
