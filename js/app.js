@@ -293,7 +293,12 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       cards.push(newCard);
-      saveCards();
+      const ok = saveCards();
+      if (!ok) {
+        // 存不進去就撤回，避免刷新後消失造成你以為有存到
+        cards = cards.filter(c => c.id !== newCard.id);
+        return;
+      }
 
       closeAllModals();
       currentPageIndex = target.pageIndex;
@@ -383,144 +388,203 @@ document.addEventListener("DOMContentLoaded", () => {
   // ===============================
   // 8) Smart Add：圖片 → 推論團體/成員 + 預覽（唯一版本）
   // ===============================
-  const MEMBER_TO_GROUP = {
-    // TWICE
-    mina: "TWICE",
-    momo: "TWICE",
-    nayeon: "TWICE",
-    sana: "TWICE",
-    tzuyu: "TWICE",
-    jihyo: "TWICE",
-    dahyun: "TWICE",
-    chaeyoung: "TWICE",
-    jeongyeon: "TWICE",
 
-    // MAMAMOO
-    solar: "MAMAMOO",
-    moonbyul: "MAMAMOO",
-    wheein: "MAMAMOO",
-    hwasa: "MAMAMOO",
-
-    // VIVIZ
-    eunha: "VIVIZ",
-    sinb: "VIVIZ",
-    umji: "VIVIZ"
+  // 你可以一直加
+  const MEMBER_DB = {
+    TWICE: ["Mina", "Momo", "Nayeon", "Sana", "Tzuyu", "Jihyo", "Jeongyeon", "Dahyun", "Chaeyoung"],
+    MAMAMOO: ["Solar", "Moonbyul", "Wheein", "Hwasa"],
+    VIVIZ: ["Eunha", "SinB", "Umji"]
   };
 
-  function normalizeHint(text) {
-    return (text || "").toLowerCase().split("?")[0].split("#")[0];
-  }
-
-  function inferGroupMemberFromText(text) {
-    const hint = normalizeHint(text);
-    for (const memberKey of Object.keys(MEMBER_TO_GROUP)) {
-      if (hint.includes(memberKey)) {
-        return { member: memberKey, group: MEMBER_TO_GROUP[memberKey] };
+  const ALIAS_MAP = (() => {
+    const map = new Map();
+    for (const [group, members] of Object.entries(MEMBER_DB)) {
+      for (const m of members) {
+        map.set(m.toLowerCase(), { group, member: m });
+        if (m === "Jeongyeon") map.set("jungyeon", { group, member: m });
       }
     }
-    return null;
+    map.set("twice", { group: "TWICE", member: "" });
+    map.set("mamamoo", { group: "MAMAMOO", member: "" });
+    map.set("viviz", { group: "VIVIZ", member: "" });
+    return map;
+  })();
+
+  function extractTokensFromImageRef(imageRef) {
+    if (!imageRef) return [];
+    try {
+      const clean = decodeURIComponent(imageRef.split("#")[0].split("?")[0]);
+      const last = clean.split("/").pop() || clean;
+      const base = last.replace(/\.(png|jpg|jpeg|webp|gif)$/i, "");
+      return base.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    } catch {
+      return String(imageRef).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    }
   }
 
-  function titleCaseMember(memberKey) {
-    if (!memberKey) return "";
-    return memberKey.charAt(0).toUpperCase() + memberKey.slice(1);
-  }
+  function inferLocal(imageRef) {
+    const tokens = extractTokensFromImageRef(imageRef);
+    let guessedGroup = "";
+    let guessedMember = "";
 
-  function setPreviewImage(urlOrDataUrl) {
-    const preview = document.getElementById("add-image-preview");
-    if (!preview) return;
+    for (const t of tokens) {
+      const hit = ALIAS_MAP.get(t);
+      if (!hit) continue;
 
-    if (!urlOrDataUrl) {
-      preview.classList.remove("has-img");
-      preview.style.backgroundImage = "";
-      preview.textContent = "預覽";
-      return;
+      if (hit.member && !guessedMember) {
+        guessedMember = hit.member;
+        guessedGroup = hit.group;
+        break;
+      }
+      if (hit.group && !guessedGroup) guessedGroup = hit.group;
     }
 
-    preview.textContent = "";
-    preview.classList.add("has-img");
-    preview.style.backgroundImage = `url(${urlOrDataUrl})`;
-    preview.style.backgroundSize = "cover";
-    preview.style.backgroundPosition = "center";
+    return { group: guessedGroup, member: guessedMember };
   }
 
-  function setSmartStatus(type, msg) {
-    const el = document.getElementById("smart-status");
-    if (!el) return;
-    el.className = "smart-status" + (type ? ` ${type}` : "");
-    el.textContent = msg;
+  function setPreview(previewEl, src) {
+    if (!previewEl) return;
+    if (!src) {
+      previewEl.classList.add("is-empty");
+      previewEl.style.backgroundImage = "";
+      previewEl.textContent = "預覽";
+      return;
+    }
+    previewEl.classList.remove("is-empty");
+    previewEl.textContent = "";
+    previewEl.style.backgroundImage = `url(${src})`;
   }
 
-  function resetSmartAddUI() {
-    setPreviewImage("");
-    setSmartStatus("", "貼上圖片後會自動填入「團體 / 成員」，你只要確認就好");
+  // ✅ 把上傳圖片壓縮成較小的 DataURL（避免 localStorage 爆掉）
+  async function compressToDataURL(file, opts = {}) {
+    const { maxSide = 900, quality = 0.86, mime = "image/jpeg" } = opts;
+
+    const img = await new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(image);
+      };
+      image.onerror = (e) => {
+        URL.revokeObjectURL(url);
+        reject(e);
+      };
+      image.src = url;
+    });
+
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+
+    const scale = Math.min(1, maxSide / Math.max(w, h));
+    const tw = Math.round(w * scale);
+    const th = Math.round(h * scale);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = tw;
+    canvas.height = th;
+
+    const ctx = canvas.getContext("2d", { alpha: false });
+    ctx.drawImage(img, 0, 0, tw, th);
+
+    return canvas.toDataURL(mime, quality);
   }
 
   function wireSmartAddModal() {
     const urlInput = document.getElementById("add-image");
     const fileInput = document.getElementById("add-image-file");
+    const previewEl = document.getElementById("add-image-preview");
+    const statusEl = document.getElementById("smart-status");
+
     const nameInput = document.getElementById("add-name");
     const groupInput = document.getElementById("add-group");
     const memberInput = document.getElementById("add-member");
     const catSelect = document.getElementById("add-category");
 
-    if (!urlInput || !fileInput || !nameInput || !groupInput || !memberInput) {
-      console.warn("[smart-add] Missing elements. Check IDs: add-image/add-image-file/add-name/add-group/add-member");
+    const toggleBtn = document.getElementById("toggle-advanced");
+    const advArea = document.getElementById("advanced-area");
+
+    if (!urlInput || !fileInput || !previewEl || !statusEl || !nameInput || !groupInput || !memberInput) {
+      console.warn("[smart-add] Missing elements. Check your HTML ids.");
       return;
     }
 
-    // 1) 貼網址：嘗試預覽 + 用網址關鍵字猜
-    urlInput.addEventListener("input", () => {
-      const url = urlInput.value.trim();
-      if (!url) {
-        resetSmartAddUI();
-        return;
+    // 進階收合
+    if (toggleBtn && advArea) {
+      toggleBtn.addEventListener("click", () => {
+        advArea.classList.toggle("hidden");
+        toggleBtn.textContent = advArea.classList.contains("hidden") ? "進階設定" : "收合進階";
+      });
+    }
+
+    function autoFillByRef(ref) {
+      const { group, member } = inferLocal(ref);
+
+      if (group && !groupInput.value.trim()) groupInput.value = group;
+      if (member && !memberInput.value.trim()) memberInput.value = member;
+
+      if (!nameInput.value.trim()) {
+        const cat = catSelect?.value || "小卡";
+        if (member) nameInput.value = `${member} ${cat}`;
       }
 
-      // 外部網址可能防盜連，預覽不一定會出（正常）
-      setPreviewImage(url);
-
-      const guessed = inferGroupMemberFromText(url);
-      if (guessed) {
-        groupInput.value = guessed.group;
-        memberInput.value = titleCaseMember(guessed.member);
-        if (!nameInput.value.trim()) {
-          const cat = catSelect?.value || "小卡";
-          nameInput.value = `${titleCaseMember(guessed.member)} ${cat}`;
-        }
-        setSmartStatus("ok", `已自動判斷：${guessed.group} · ${titleCaseMember(guessed.member)}（可直接加入或修改）`);
+      if (group && member) {
+        statusEl.className = "smart-status ok";
+        statusEl.textContent = `已自動判斷：${group} · ${member}（可直接加入或自行修改）`;
+      } else if (group) {
+        statusEl.className = "smart-status warn";
+        statusEl.textContent = `判斷到團體：${group}（成員不確定，你可以補一下）`;
+      } else if (ref) {
+        statusEl.className = "smart-status warn";
+        statusEl.textContent = "已填入圖片，但目前無法判斷團體/成員（可手動輸入）";
       } else {
-        setSmartStatus("warn", "圖片已填入，但網址沒有關鍵字可判斷（可改用上傳檔案或手動填）");
+        statusEl.className = "smart-status";
+        statusEl.textContent = "貼上圖片後會自動填入「團體 / 成員」，你只要確認就好";
       }
+    }
+
+    // 貼網址 → 預覽（可能被外連擋是正常）+ 推論
+    urlInput.addEventListener("input", () => {
+      const ref = urlInput.value.trim();
+      setPreview(previewEl, ref);
+      autoFillByRef(ref);
     });
 
-    // 2) 上傳檔案：一定能預覽 + 用檔名關鍵字猜（tzuyu.jpg 最穩）
-    fileInput.addEventListener("change", () => {
-      const file = fileInput.files && fileInput.files[0];
+    // 上傳檔案 → 壓縮成 DataURL → 預覽 + 推論 + 把 DataURL 寫回 add-image（提交時會存進 cards）
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files?.[0];
       if (!file) return;
 
-      // 用檔名推論團體/成員（例如 tzuyu.jpg）
-      const guessed = inferGroupMemberFromText(file.name);
-      if (guessed) {
-        groupInput.value = guessed.group;
-        memberInput.value = titleCaseMember(guessed.member);
-        if (!nameInput.value.trim()) nameInput.value = `${titleCaseMember(guessed.member)} 小卡`;
+      statusEl.className = "smart-status";
+      statusEl.textContent = "圖片處理中（壓縮/轉檔）…";
+
+      try {
+        const dataUrl = await compressToDataURL(file, { maxSide: 900, quality: 0.86, mime: "image/jpeg" });
+        urlInput.value = dataUrl;       // ✅ 讓 submit 直接存這個（刷新不會不見）
+        setPreview(previewEl, dataUrl); // ✅ 預覽一定顯示
+        autoFillByRef(file.name);       // ✅ 用檔名推論 Mina / tzuyu 這類
+        statusEl.className = "smart-status ok";
+        statusEl.textContent = "圖片已處理完成 ✅（已可加入收藏，刷新也不會消失）";
+      } catch (e) {
+        console.error(e);
+        statusEl.className = "smart-status warn";
+        statusEl.textContent = "圖片處理失敗（請換一張或改成 jpg/png）";
       }
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result;
-
-        // ✅ 預覽
-        setPreviewImage(dataUrl);
-
-        // ✅ 關鍵：把 dataUrl 塞回 add-image
-        // 這樣 submit 時 imageUrl 才會真的被存進 cards/localStorage
-        urlInput.value = dataUrl;
-      };
-      reader.readAsDataURL(file);
     });
+
+    // 類別改變時，如果名稱空白就更新
+    if (catSelect) {
+      catSelect.addEventListener("change", () => {
+        if (!nameInput.value.trim() && memberInput.value.trim()) {
+          nameInput.value = `${memberInput.value.trim()} ${catSelect.value}`;
+        }
+      });
+    }
   }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    wireSmartAddModal();
+  });
 
   // ===============================
   // 9) 初始化（最底下只做一次）
