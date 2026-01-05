@@ -481,12 +481,16 @@ document.addEventListener("DOMContentLoaded", () => {
       setPreviewImage(url);
 
       const guessed = inferGroupMemberFromText(url);
+      const catSelect = document.getElementById("add-category");
+      const memberKey = guessed?.member || ""; // 例如 "mina"
+      if (catSelect) catSelect.value = inferCategoryFromText(url, memberKey);
       if (guessed) {
         groupInput.value = guessed.group;
         memberInput.value = titleCaseMember(guessed.member);
         if (!nameInput.value.trim()) {
-          const cat = catSelect?.value || "小卡";
-          nameInput.value = `${titleCaseMember(guessed.member)} ${cat}`;
+          const cat = (catSelect && catSelect.value) || "周邊";
+          if (guessed?.member) nameInput.value = `${titleCaseMember(guessed.member)} ${cat}`;
+          else if (groupInput.value.trim()) nameInput.value = `${groupInput.value.trim()} ${cat}`;
         }
         setSmartStatus("ok", `已自動判斷：${guessed.group} · ${titleCaseMember(guessed.member)}（可直接加入或修改）`);
       } else {
@@ -501,6 +505,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // 用檔名推論團體/成員（例如 tzuyu.jpg）
       const guessed = inferGroupMemberFromText(file.name);
+      const catSelect = document.getElementById("add-category");
+      const memberKey = guessed?.member || "";
+      if (catSelect) catSelect.value = inferCategoryFromText(file.name, memberKey);
       if (guessed) {
         groupInput.value = guessed.group;
         memberInput.value = titleCaseMember(guessed.member);
@@ -521,6 +528,8 @@ document.addEventListener("DOMContentLoaded", () => {
       reader.readAsDataURL(file);
     });
   }
+
+
 
   // ===============================
   // 9) 初始化（最底下只做一次）
