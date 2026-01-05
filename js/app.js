@@ -1,4 +1,27 @@
 // js/app.js
+// ===== 防呆：避免因為漏載 stats/achievement 的檔案就整個炸掉 =====
+window.renderStats = window.renderStats || function () {
+  console.warn("[renderStats] missing: 請確認 stats 函式是否有載入或已被刪除");
+};
+
+window.renderAchievements = window.renderAchievements || function () {
+  console.warn("[renderAchievements] missing: 請確認 achievements 函式是否有載入或已被刪除");
+};
+
+window.getToastSeenSet = window.getToastSeenSet || function () {
+  try {
+    const raw = localStorage.getItem("toast_seen") || "[]";
+    return new Set(JSON.parse(raw));
+  } catch {
+    return new Set();
+  }
+};
+
+window.setToastSeenSet = window.setToastSeenSet || function (set) {
+  try {
+    localStorage.setItem("toast_seen", JSON.stringify([...set]));
+  } catch {}
+};
 
 // ===== 首頁封面 + 瀏覽器上一頁控制 =====
 const coverScreen = document.getElementById("cover-screen");
@@ -448,6 +471,121 @@ function applyListFilter() {
     favoriteOnly: favoriteFilter?.value === "favorite",
   };
   renderList(filter);
+}
+
+function renderStats() {
+  const all = getAllCardsSafe();
+  const total = all.length;
+  const fav = all.filter(c => !!c.isFavorite).length;
+
+  // ===== 1) 收藏概況：塞到 #stats-summary =====
+  const summaryEl = document.getElementById("stats-summary");
+  if (summaryEl) {
+    summaryEl.innerHTML = `
+      <div class="stat-chip">
+        <div class="stat-chip__label">總收藏</div>
+        <div class="stat-chip__value">${total}</div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-chip__label">本命卡</div>
+        <div class="stat-chip__value">${fav}</div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-chip__label">一般收藏</div>
+        <div class="stat-chip__value">${Math.max(0, total - fav)}</div>
+      </div>
+    `;
+  }
+
+  // ===== 2) 依團體統計：塞到 #stats-by-group =====
+  const groupMap = new Map();
+  for (const c of all) {
+    const g = (c.group || "UNKNOWN").trim() || "UNKNOWN";
+    groupMap.set(g, (groupMap.get(g) || 0) + 1);
+  }
+  const groupList = [...groupMap.entries()].sort((a, b) => b[1] - a[1]);
+
+  const groupEl = document.getElementById("stats-by-group");
+  if (groupEl) {
+    if (groupList.length === 0) {
+      groupEl.innerHTML = `<div class="empty-hint">目前還沒有收藏資料</div>`;
+    } else {
+      const max = Math.max(...groupList.map(([, v]) => v), 1);
+      groupEl.innerHTML = groupList.map(([name, count]) => {
+        const w = Math.round((count / max) * 100);
+        return `
+          <div class="bar-row">
+            <div class="bar-row__head">
+              <span class="bar-row__label">${name}</span>
+              <strong class="bar-row__value">${count}</strong>
+            </div>
+            <div class="bar">
+              <div class="bar__fill" style="width:${w}%"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+
+  // ===== 3) 依類別統計：塞到 #stats-by-category =====
+  const catMap = new Map();
+  for (const c of all) {
+    const cat = (c.category || "未分類").trim() || "未分類";
+    catMap.set(cat, (catMap.get(cat) || 0) + 1);
+  }
+  const catList = [...catMap.entries()].sort((a, b) => b[1] - a[1]);
+
+  const catEl = document.getElementById("stats-by-category");
+  if (catEl) {
+    if (catList.length === 0) {
+      catEl.innerHTML = `<div class="empty-hint">目前還沒有收藏資料</div>`;
+    } else {
+      const max = Math.max(...catList.map(([, v]) => v), 1);
+      catEl.innerHTML = catList.map(([name, count]) => {
+        const w = Math.round((count / max) * 100);
+        return `
+          <div class="bar-row">
+            <div class="bar-row__head">
+              <span class="bar-row__label">${name}</span>
+              <strong class="bar-row__value">${count}</strong>
+            </div>
+            <div class="bar">
+              <div class="bar__fill" style="width:${w}%"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+}
+
+function renderAchievements() {
+  const all = getAllCardsSafe();
+  const total = all.length;
+  const fav = all.filter(c => !!c.isFavorite).length;
+
+  // 你可以之後再擴充條件，先讓它一定會顯示
+  const achievements = [
+    { id: "a1", title: "新手收藏家", desc: "收藏 1 張", ok: total >= 1 },
+    { id: "a2", title: "小有規模", desc: "收藏 10 張", ok: total >= 10 },
+    { id: "a3", title: "收藏控", desc: "收藏 50 張", ok: total >= 50 },
+    { id: "a4", title: "本命認證", desc: "本命卡 1 張", ok: fav >= 1 },
+    { id: "a5", title: "本命爆棚", desc: "本命卡 10 張", ok: fav >= 10 },
+  ];
+
+  const box = document.getElementById("achievement-list"); // ✅ 你的 HTML 是 achievement-list
+  if (!box) return;
+
+  box.innerHTML = achievements.map(a => `
+    <div class="ach-item ${a.ok ? "is-done" : ""}">
+      <div class="ach-item__left">
+        <div class="ach-item__title">${a.ok ? "🏆" : "🔒"} ${a.title}</div>
+        <div class="ach-item__desc">${a.desc}</div>
+      </div>
+      <div class="ach-item__right">${a.ok ? "已達成" : "未達成"}</div>
+    </div>
+  `).join("");
 }
 
 // 初始化
