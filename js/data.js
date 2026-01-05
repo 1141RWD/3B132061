@@ -5,59 +5,47 @@ const STORAGE_KEY = "idol_collection_cards_github_demo";
 const SLOTS_PER_PAGE = 8;
 
 // 初始假資料（第一頁 4 張 TWICE）
-const defaultCards = [
+const INITIAL_CARDS = [
   {
     id: 1,
     name: "Mina 小卡",
     group: "TWICE",
     member: "Mina",
     category: "小卡",
-    series: "Fancy You",
-    gotDate: "2024-05-01",
-    note: "測試圖片",
-    imageUrl: "img/mina.jpg", // 如果你有移到 img 資料夾就改成 "img/mina.jpg"
+    imageUrl: "img/mina.jpg",
     isFavorite: true,
     pageIndex: 0,
     slotIndex: 0
   },
   {
     id: 2,
-    name: "Momo 小卡",
+    name: "Feel Special 專輯",
     group: "TWICE",
-    member: "Momo",
-    category: "小卡",
-    series: "Fancy You",
-    gotDate: "2024-06-10",
-    note: "測試圖片",
-    imageUrl: "img/momo.jpg",
+    member: "",
+    category: "專輯",
+    imageUrl: "img/twice-Feel_Special-album.jpg",
     isFavorite: false,
     pageIndex: 0,
     slotIndex: 1
   },
   {
     id: 3,
-    name: "Nayeon 小卡",
+    name: "TWICE 演唱會 DVD",
     group: "TWICE",
-    member: "Nayeon",
-    category: "小卡",
-    series: "Feel Special",
-    gotDate: "2024-03-20",
-    note: "測試圖片",
-    imageUrl: "img/nayeon.jpg",
+    member: "",
+    category: "周邊",
+    imageUrl: "img/twice-lights-dvd.jpg",
     isFavorite: false,
     pageIndex: 0,
     slotIndex: 2
   },
   {
     id: 4,
-    name: "Sana 小卡",
+    name: "Nayeon 徽章",
     group: "TWICE",
-    member: "Sana",
-    category: "小卡",
-    series: "Fancy You",
-    gotDate: "2024-04-15",
-    note: "測試圖片",
-    imageUrl: "img/sana.jpg",
+    member: "Nayeon",
+    category: "徽章",
+    imageUrl: "img/nayeon-badge.jpg",
     isFavorite: false,
     pageIndex: 0,
     slotIndex: 3
