@@ -1306,13 +1306,15 @@ h1, h2, h3, .section-header h2, .brand h1 {
   letter-spacing: 0.4px;
 }
 
-/* === 翻頁動畫專用 CSS (書背中線翻頁版) === */
+/* =========================================
+   真實書本中線翻頁 CSS (Split Page Flip)
+   ========================================= */
 
 .album-wrapper {
-  /* 透視感：數值越小，翻頁時「甩」出來的感覺越強烈 */
-  perspective: 2500px; 
+  /* 稍微拉遠透視，讓翻頁弧度更優雅 */
+  perspective: 2500px;
   position: relative;
-  overflow: visible; 
+  overflow: visible;
 }
 
 .page-flip-layer {
@@ -1321,70 +1323,85 @@ h1, h2, h3, .section-header h2, .brand h1 {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 999; 
+  z-index: 999;
   pointer-events: none;
-  display: none; 
-  
-  transform-style: preserve-3d;
-  
-  /* 🔥 關鍵修改：將旋轉軸心設定在「正中間」 */
-  /* 這樣就會沿著你畫的那條中間線翻轉 */
-  transform-origin: center center; 
+  display: none;
+  /* 這一層本身不旋轉，而是讓裡面的左右頁旋轉 */
 }
 
 .page-flip-layer.active {
   display: block;
 }
 
-.page-flip-paper {
-  width: 100% !important;  
+/* 通用的半頁設定 */
+.flip-half {
+  position: absolute;
+  top: 0;
+  width: 50%; /* 只佔一半寬度 */
   height: 100%;
+  background-color: #ffffff;
+  background-size: 200% 100%; /* 圖片放大兩倍，這樣一半寬度剛好顯示一半圖片 */
+  backface-visibility: hidden; /* 翻過去背面隱藏，露出底下的新頁面 */
+  transform-style: preserve-3d;
   
-  background-color: #ffffff !important; 
-  opacity: 1 !important;
-  
-  background-size: cover;
-  background-position: center;
-  border-radius: 24px; 
-  
-  /* 陰影調整：讓中間翻起來時更有立體感 */
-  box-shadow: 0 0 25px rgba(0,0,0,0.15); 
-  backface-visibility: hidden; /* 背面看不到 */
-  
-  left: 0 !important;
-  right: auto !important;
+  /* 陰影與圓角 */
+  box-shadow: 0 0 15px rgba(0,0,0,0.08); 
 }
 
-/* 下一頁動畫：繞著中線，向左翻 (像是把右邊的頁面蓋到左邊) */
-.anim-flip-next {
-  animation: flipToLeft 0.9s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
+/* 左半頁 */
+.flip-left {
+  left: 0;
+  border-radius: 24px 0 0 24px; /* 左邊圓角 */
+  transform-origin: right center; /* 🔥 軸心設在右邊（書脊） */
+  background-position: left center; /* 顯示圖片左半邊 */
 }
 
-/* 上一頁動畫：繞著中線，向右翻 (像是把左邊的頁面翻開) */
-.anim-flip-prev {
-  animation: flipFromLeft 0.9s cubic-bezier(0.645, 0.045, 0.355, 1.000) forwards;
+/* 右半頁 */
+.flip-right {
+  right: 0;
+  border-radius: 0 24px 24px 0; /* 右邊圓角 */
+  transform-origin: left center; /* 🔥 軸心設在左邊（書脊） */
+  background-position: right center; /* 顯示圖片右半邊 */
 }
 
-@keyframes flipToLeft {
-  0% {
-    transform: rotateY(0deg);
-    opacity: 1;
+/* === 動畫關鍵影格 === */
+
+/* 下一頁：右頁翻起來，往左蓋過去 */
+.anim-next-right {
+  animation: flipRightToLeft 0.7s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+}
+
+/* 上一頁：左頁翻起來，往右蓋過去 */
+.anim-prev-left {
+  animation: flipLeftToRight 0.7s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+}
+
+/* 右翻左動畫 (0度 -> -180度) */
+@keyframes flipRightToLeft {
+  0% { 
+    transform: rotateY(0deg); 
+    filter: brightness(100%);
   }
-  100% {
-    /* 翻轉 -90度，看起來就像頁面立起來然後消失 */
-    /* 如果覺得翻得不夠過去，可以改 -100deg 或更多，但 -90deg 最像活頁翻動 */
-    transform: rotateY(-95deg); 
-    opacity: 0; 
+  50% {
+    filter: brightness(90%); /* 翻到中間變暗一點 */
+  }
+  100% { 
+    transform: rotateY(-180deg); 
+    filter: brightness(100%);
   }
 }
 
-@keyframes flipFromLeft {
-  0% {
-    transform: rotateY(-95deg); /* 從立著的狀態 */
-    opacity: 0;
+/* 左翻右動畫 (0度 -> 180度) */
+@keyframes flipLeftToRight {
+  0% { 
+    transform: rotateY(0deg); 
+    filter: brightness(100%);
   }
-  100% {
-    transform: rotateY(0deg); /* 蓋回平放 */
-    opacity: 1;
+  50% {
+    filter: brightness(90%);
+  }
+  100% { 
+    transform: rotateY(180deg); 
+    filter: brightness(100%);
   }
 }

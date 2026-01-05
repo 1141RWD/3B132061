@@ -384,75 +384,83 @@ const prevPageBtn = document.getElementById("prev-page");
 const nextPageBtn = document.getElementById("next-page");
 
 // 封裝一個通用的翻頁函式
+// 修改 app.js 中的 handlePageFlip 函式
 async function handlePageFlip(direction) {
   const albumGrid = document.getElementById("album-grid");
   const flipLayer = document.getElementById("pageFlipLayer");
-  const flipPaper = document.getElementById("pageFlipPaper");
-  
-  if (!albumGrid || !flipLayer || !flipPaper) {
+  const leftPaper = document.getElementById("flipPaperLeft");
+  const rightPaper = document.getElementById("flipPaperRight");
+
+  if (!albumGrid || !flipLayer || !leftPaper || !rightPaper) {
     updatePageData(direction);
     return;
   }
 
-  // 1. 為了讓動畫明顯，我們先鎖定寬高，避免跑版
-  flipLayer.style.width = albumGrid.offsetWidth + "px";
-  flipLayer.style.height = albumGrid.offsetHeight + "px";
-
   try {
-    // 2. 截圖 (如果是本地檔案 file:// 有可能失敗，失敗就用白底)
+    // 1. 效能優化：scale 改為 1，大幅提升截圖速度，解決卡頓
     let dataUrl = "";
     if (window.html2canvas) {
-        const canvas = await html2canvas(albumGrid, { 
-          scale: 1.5, // 解析度稍微降低一點提升速度
-          backgroundColor: "#ffffff", // 強制白底
-          useCORS: true, // 嘗試解決圖片跨域問題
-          logging: false
-        });
-        dataUrl = canvas.toDataURL();
+      const canvas = await html2canvas(albumGrid, {
+        scale: 1, // 🔥 關鍵優化：設為 1 讓翻頁更順暢
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        logging: false
+      });
+      dataUrl = canvas.toDataURL();
     }
 
-    // 3. 設定翻頁層圖片
+    // 2. 設定截圖到左右兩頁
+    // 兩頁都用同一張圖，但 CSS 的 background-position 會自動讓它們各顯示一半
     if (dataUrl) {
-      flipPaper.style.backgroundImage = `url(${dataUrl})`;
-    } else {
-      flipPaper.style.backgroundImage = "none";
-      flipPaper.style.backgroundColor = "#fff"; // 截圖失敗至少要是白紙
+      leftPaper.style.backgroundImage = `url(${dataUrl})`;
+      rightPaper.style.backgroundImage = `url(${dataUrl})`;
     }
-    
-    // 重置動畫 class
-    flipLayer.classList.remove("active", "anim-flip-next", "anim-flip-prev");
-    
-    // ★ 關鍵技巧：強制瀏覽器 Reflow (重繪)，讓動畫重置生效
-    void flipLayer.offsetWidth; 
 
-    // 4. 開始動畫邏輯
+    // 3. 重置動畫 Class
+    flipLayer.classList.remove("active");
+    leftPaper.classList.remove("anim-prev-left");
+    rightPaper.classList.remove("anim-next-right");
+    
+    // 強制重繪
+    void flipLayer.offsetWidth;
+
+    // 4. 開始翻頁邏輯
+    flipLayer.classList.add("active");
+
     if (direction === 'next') {
-      // 下一頁：
-      // (1) 顯示這張舊截圖蓋在上面
-      flipLayer.classList.add("active");
-      flipLayer.classList.add("anim-flip-next");
-
-      // (2) 底下偷偷換成新的一頁
-      updatePageData(direction); 
-      
-    } else {
-      // 上一頁：
-      // (1) 先換成新的一頁 (也就是上一頁的內容)
+      // === 下一頁 ===
+      // A. 先偷偷把底下的內容換成「新的一頁」
       updatePageData(direction);
 
-      // (2) 讓翻頁層從左邊蓋回來 (這裡比較難完美模擬，先求有動感)
-      flipLayer.classList.add("active");
-      flipLayer.classList.add("anim-flip-prev");
+      // B. 視覺戲法：
+      // - 左邊的舊截圖 (leftPaper) 保持不動，擋住新的左頁
+      // - 右邊的舊截圖 (rightPaper) 開始往左翻 (0 -> -180度)
+      // - 當右頁翻過去後 (超過90度)，backface-hidden 會讓它消失，露出底下「新的右頁」
+      // - 同時原本不動的左截圖，因為是在 flipLayer 上，等動畫結束隱藏 flipLayer 後，就會露出底下「新的左頁」
+      
+      rightPaper.classList.add("anim-next-right");
+      
+    } else {
+      // === 上一頁 ===
+      updatePageData(direction);
+      
+      // 視覺戲法：
+      // - 右邊的舊截圖保持不動
+      // - 左邊的舊截圖往右翻 (0 -> 180度)
+      leftPaper.classList.add("anim-prev-left");
     }
 
-    // 5. 動畫結束後清理
+    // 5. 動畫結束後清理 (時間配合 CSS 的 0.7s)
     setTimeout(() => {
-      flipLayer.classList.remove("active", "anim-flip-next", "anim-flip-prev");
-      flipPaper.style.backgroundImage = "";
-    }, 1200); // 時間要跟 CSS 的 1.2s 一樣
+      flipLayer.classList.remove("active");
+      leftPaper.classList.remove("anim-prev-left");
+      rightPaper.classList.remove("anim-next-right");
+      leftPaper.style.backgroundImage = "";
+      rightPaper.style.backgroundImage = "";
+    }, 700);
 
   } catch (err) {
-    console.warn("動畫失敗，直接換頁", err);
+    console.warn("翻頁動畫失敗，直接切換", err);
     updatePageData(direction);
   }
 }
